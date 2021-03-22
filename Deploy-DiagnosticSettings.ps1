@@ -174,6 +174,8 @@ function Deploy-DiagnosticSettings {
 
                 $boolCreatePolicy = $false
                 $boolCreatAssignment = $false
+                $definition = ""
+                $assignment = ""
 
                 $nameGUID = (new-guid).toString().replace("-","").substring(0,23)
 
@@ -186,9 +188,15 @@ function Deploy-DiagnosticSettings {
                 try {
                     Write-Host "`tEvaluating if Policy exists." -ForegroundColor White
                     $definition = Get-AzPolicyDefinition -Name $displayName -ManagementGroupName $managementGroup.Name -ErrorAction Stop
-                    Write-Host "`t`tPolicy exists. Moving to assignment task." -ForegroundColor Green
                 }
                 catch {
+                    $boolCreatePolicy = $true
+                }
+
+                if ($definition){
+                    Write-Host "`t`tPolicy exists. Moving to assignment task." -ForegroundColor Green
+                }
+                else {
                     $boolCreatePolicy = $true
                 }
 
@@ -202,22 +210,29 @@ function Deploy-DiagnosticSettings {
                         Write-Warning "Failed to create policy. Exiting process."
                         Break Script
                     }
-                    
                 }
 
                 try {
                     Write-Host "`tEvaluating if Policy Assignment exists." -ForegroundColor White
                     $assignment = Get-AzPolicyAssignment -PolicyDefinitionId $definition.PolicyDefinitionId -Scope $managementGroup.Id -ErrorAction Stop
-                    Write-Host "`t`tPolicy Assignment exists. Moving on to next policy." -ForegroundColor Green
+                    
                 }
                 catch {
                     $boolCreatAssignment = $true
                 }
 
+                if($assignment){
+                    Write-Host "`t`tPolicy Assignment exists. Moving on to next policy." -ForegroundColor Green
+                }
+                else {
+                    $boolCreatAssignment = $true
+                }
+
                 if ($boolCreatAssignment){
+                    #Write-Host "post here"
 
                     try {
-                        $assignment = New-AzPolicyAssignment -Name $nameGUID -DisplayName ($displayName + "-Assignment") -Location 'eastus' -Scope $managementGroup.Id -PolicyDefinition $definition -PolicyParameterObject $policyParameters -AssignIdentity  -ErrorAction Stop
+                        $assignment = New-AzPolicyAssignment -Name $nameGUID -DisplayName ($displayName + "-Assignment") -Location 'eastus' -Scope $managementGroup.Id -PolicyDefinition $definition -PolicyParameterObject $policyParameters -AssignIdentity
                         Write-Host ("`t`tAssigned Azure Policy: " + $nameGUID + "/ " + ($displayName + "-Assignment") + " to management group: " + $managementGroup.Id) -ForegroundColor Green
 
                         $role1DefinitionId = [GUID]($definition.properties.policyRule.then.details.roleDefinitionIds[0] -split "/")[4]
