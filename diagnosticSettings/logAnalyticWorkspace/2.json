@@ -3,7 +3,8 @@
     "policyRule": {
         "if": {
           "field": "type",
-          "equals": "Microsoft.KeyVault/test"
+          "equals": "Microsoft.KeyVault/test",
+          "more": "changes"
         }
     }
 }
