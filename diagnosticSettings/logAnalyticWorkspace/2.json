@@ -1,0 +1,9 @@
+{
+    "mode": "All",
+    "policyRule": {
+        "if": {
+          "field": "type",
+          "equals": "Microsoft.KeyVault/test"
+        }
+    }
+}
