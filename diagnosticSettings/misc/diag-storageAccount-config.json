@@ -1,0 +1,37 @@
+//   ----------------------------
+  {
+    "field": "Microsoft.Insights/diagnosticSettings/storageAccountId",
+    "equals": "[parameters('storageAccount')]"
+  }
+//   ----------------------------
+
+
+//   ----------------------------
+  "storageAccount": {
+    "type": "string"
+  },
+//   ----------------------------
+
+
+//   ----------------------------
+  "storageAccountId": "[parameters('storageAccount')]",
+//   ----------------------------
+
+
+//   ----------------------------
+  "storageAccount": {
+    "value": "[parameters('storageAccount')]"
+  },
+//   ----------------------------
+
+
+//   ----------------------------
+  "storageAccount": {
+    "type": "String",
+    "metadata": {
+      "displayName": "Storage Account",
+      "description": "Select Storage Account from dropdown list.",
+      "strongType": "Microsoft.Storage/storageAccounts"
+    }
+  },
+//   ----------------------------
