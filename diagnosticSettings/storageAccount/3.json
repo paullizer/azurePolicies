@@ -1,23 +1,50 @@
 {
-    "mode": "Indexed",
+    "mode": "All",
     "policyRule": {
       "if": {
         "field": "type",
-        "equals": "Microsoft.KeyVault/managedHsms"
+        "equals": "Microsoft.RecoveryServices/vaults"
       },
       "then": {
         "effect": "[parameters('effect')]",
         "details": {
           "type": "Microsoft.Insights/diagnosticSettings",
+          "name": "setByPolicy",
           "existenceCondition": {
-            "allOf": [
+            "allof": [
               {
-                "field": "Microsoft.Insights/diagnosticSettings/logs.enabled",
-                "equals": "[parameters('logsEnabled')]"
+                "count": {
+                  "field": "Microsoft.Insights/diagnosticSettings/logs[*]",
+                  "where": {
+                    "allof": [
+                      {
+                        "field": "Microsoft.Insights/diagnosticSettings/logs[*].Category",
+                        "in": [
+                          "CoreAzureBackup",
+                          "AddonAzureBackupJobs",
+                          "AddonAzureBackupAlerts",
+                          "AddonAzureBackupPolicy",
+                          "AddonAzureBackupStorage",
+                          "AddonAzureBackupProtectedInstance",
+                          "AzureBackupReport"
+                        ]
+                      },
+                      {
+                        "field": "Microsoft.Insights/diagnosticSettings/logs[*].Enabled",
+                        "equals": "True"
+                      }
+                    ]
+                  }
+                },
+                "Equals": 7
               },
               {
-                "field": "Microsoft.Insights/diagnosticSettings/metrics.enabled",
-                "equals": "[parameters('metricsEnabled')]"
+                "field": "Microsoft.Insights/diagnosticSettings/workspaceId",
+                "equals": "[parameters('logAnalytics')]"
+              },
+              {
+                "field": "Microsoft.Insights/diagnosticSettings/logAnalyticsDestinationType",
+                "equals": "Dedicated"
               }
             ]
           },
@@ -35,45 +62,57 @@
                   "resourceName": {
                     "type": "string"
                   },
-                  "location": {
-                    "type": "string"
-                  },
                   "logAnalytics": {
                     "type": "string"
                   },
-                  "metricsEnabled": {
-                    "type": "string"
-                  },
-                  "logsEnabled": {
+                  "location": {
                     "type": "string"
                   },
                   "profileName": {
+                    "type": "string"
+                  },
+                  "logsEnabled": {
                     "type": "string"
                   }
                 },
                 "variables": {},
                 "resources": [
                   {
-                    "type": "Microsoft.KeyVault/managedHsms/providers/diagnosticSettings",
+                    "type": "Microsoft.RecoveryServices/vaults/providers/diagnosticSettings",
                     "apiVersion": "2017-05-01-preview",
                     "name": "[concat(parameters('resourceName'), '/', 'Microsoft.Insights/', parameters('profileName'))]",
-                    "location": "[parameters('location')]",
                     "dependsOn": [],
                     "properties": {
                       "workspaceId": "[parameters('logAnalytics')]",
-                      "metrics": [
-                        {
-                          "category": "AllMetrics",
-                          "enabled": "[parameters('metricsEnabled')]",
-                          "retentionPolicy": {
-                            "enabled": false,
-                            "days": 0
-                          }
-                        }
-                      ],
+                      "logAnalyticsDestinationType": "Dedicated",
+                      "metrics": [],
                       "logs": [
                         {
-                          "category": "AuditEvent",
+                          "category": "CoreAzureBackup",
+                          "enabled": "[parameters('logsEnabled')]"
+                        },
+                        {
+                          "category": "AddonAzureBackupAlerts",
+                          "enabled": "[parameters('logsEnabled')]"
+                        },
+                        {
+                          "category": "AddonAzureBackupJobs",
+                          "enabled": "[parameters('logsEnabled')]"
+                        },
+                        {
+                          "category": "AddonAzureBackupPolicy",
+                          "enabled": "[parameters('logsEnabled')]"
+                        },
+                        {
+                          "category": "AddonAzureBackupProtectedInstance",
+                          "enabled": "[parameters('logsEnabled')]"
+                        },
+                        {
+                          "category": "AddonAzureBackupStorage",
+                          "enabled": "[parameters('logsEnabled')]"
+                        },
+                        {
+                          "category": "AzureBackupReport",
                           "enabled": "[parameters('logsEnabled')]"
                         }
                       ]
@@ -83,23 +122,20 @@
                 "outputs": {}
               },
               "parameters": {
+                "logAnalytics": {
+                  "value": "[parameters('logAnalytics')]"
+                },
                 "location": {
                   "value": "[field('location')]"
                 },
                 "resourceName": {
                   "value": "[field('name')]"
                 },
-                "logAnalytics": {
-                  "value": "[parameters('logAnalytics')]"
-                },
-                "metricsEnabled": {
-                  "value": "[parameters('metricsEnabled')]"
+                "profileName": {
+                  "value": "[parameters('profileName')]"
                 },
                 "logsEnabled": {
                   "value": "[parameters('logsEnabled')]"
-                },
-                "profileName": {
-                  "value": "[parameters('profileName')]"
                 }
               }
             }
@@ -108,6 +144,14 @@
       }
     },
     "parameters": {
+      "logAnalytics": {
+        "type": "String",
+        "metadata": {
+          "displayName": "Log Analytics workspace",
+          "description": "Select Log Analytics workspace from dropdown list. If this workspace is outside of the scope of the assignment you must manually grant 'Log Analytics Contributor' permissions (or similar) to the policy assignment's principal ID.",
+          "strongType": "omsWorkspace"
+        }
+      },
       "effect": {
         "type": "String",
         "metadata": {
@@ -126,28 +170,7 @@
           "displayName": "Profile name",
           "description": "The diagnostic settings profile name"
         },
-        "defaultValue": "setbypolicy_logAnalytics"
-      },
-      "logAnalytics": {
-        "type": "String",
-        "metadata": {
-          "displayName": "Log Analytics workspace",
-          "description": "Specify the Log Analytics workspace to send log to. If this workspace is outside of the scope of the assignment you must manually grant 'Log Analytics Contributor' permissions (or similar) to the policy assignment's principal ID.",
-          "strongType": "omsWorkspace",
-          "assignPermissions": true
-        }
-      },
-      "metricsEnabled": {
-        "type": "String",
-        "metadata": {
-          "displayName": "Enable metrics",
-          "description": "Whether to enable metrics stream to the Log Analytics workspace - True or False"
-        },
-        "allowedValues": [
-          "True",
-          "False"
-        ],
-        "defaultValue": "False"
+        "defaultValue": "setbypolicy"
       },
       "logsEnabled": {
         "type": "String",

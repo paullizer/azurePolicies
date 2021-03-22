@@ -1,8 +1,8 @@
 function Deploy-DiagnosticSettings {
 
     Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
-
-    Write-Host
+    
+    $policyTotal = 3
 
     try {
         $azContext = Get-AzContext
@@ -54,7 +54,7 @@ function Deploy-DiagnosticSettings {
     Write-Host ("Connected to " + $tenant.name + " with Tenant ID " + $tenant.Id) -ForegroundColor Green
 
     [System.Collections.ArrayList]$userInputManagementGroupName = @()
-    [System.Collections.ArrayList]$userInputManagementGroupId = @()
+    [System.Collections.ArrayList]$managementGroups = @()
     
     $boolMoreManagementGroups = $true
     while ($boolMoreManagementGroups) {
@@ -67,18 +67,18 @@ function Deploy-DiagnosticSettings {
 
     foreach ($managementGroupName in $userInputManagementGroupName){
         try{
-            $managementGroup = Get-AzManagementGroup $managementGroupName
+            $managementGroupObject = Get-AzManagementGroup $managementGroupName
         }
         catch {
             Write-Warning "Unable to collect management group information. Please verify access to internet and permissions to resource. Existing process."
             Break Script
         }
 
-        if ($managementGroup){
-            $userInputManagementGroupId.Add($managementGroup.Id) | Out-Null
+        if ($managementGroupObject){
+            $managementGroups.Add($managementGroupObject) | Out-Null
         }
         else {
-            $userInputManagementGroupId.Add($mgTest.Id) | Out-Null
+
         }
     }
 
@@ -123,28 +123,22 @@ function Deploy-DiagnosticSettings {
             }
         }
     }
+    
+    for ($x = 1; $x -le $policyTotal; $x++){
 
-    Write-Host ("Processing JSON policy.") -ForegroundColor White
-
-    for ($x = 1; $x -le 3; $x++){
-
-        $jsonObject = ""
+        Write-Host ("Processing JSON policy: " + $x + ".json") -ForegroundColor White
 
         $jsonPath = ("https://raw.githubusercontent.com/paullizer/azurePolicies/main/diagnosticSettings/storageAccount/" + $x +".json")
 
         try {
-
             $jsonWeb = Invoke-WebRequest $jsonPath
-        
-
         }
         catch{
-            Write-Warning "Failed to pull policy from Github.com. Waiting 10 seconds to attempt one more time."
+            Write-Warning "Failed to pull policy from Github.com. Waiting 5 seconds to attempt one more time."
 
-            Start-Sleep -s 10
+            Start-Sleep -s 5
 
             $jsonWeb = Invoke-WebRequest $jsonPath
-
         }
 
         $jsonObject = $jsonWeb.Content | ConvertFrom-Json
@@ -155,7 +149,6 @@ function Deploy-DiagnosticSettings {
 
             $purposeType = $jsonObject.policyRule.then.details.type.split(".")[$jsonObject.policyRule.then.details.type.split(".").count-1]
             $purposeType = $purposeType.split("/")[1]
-
 
             $displayName = "TEST-" + $purposeType + "-"
 
@@ -173,19 +166,26 @@ function Deploy-DiagnosticSettings {
                 $displayName = $displayName.substring(0,62)
             }
 
-           
             $policy = $jsonObject.PolicyRule | ConvertTo-Json -Depth 64
 
             $parameters = $jsonObject.Parameters | ConvertTo-Json -Depth 64
 
-        
-            foreach ($managementGroupName in $userInputManagementGroupName){
+            foreach ($managementGroup in $managementGroups){
 
                 $boolCreatePolicy = $false
+                $boolCreatAssignment = $false
+
+                $nameGUID = (new-guid).toString().replace("-","").substring(0,23)
+
+                $policyParameters = @{
+                    'logAnalytics' = $logAnalyticWorkspaceResourceId
+                    'storageAccount' = $storageAccountResourceId
+                    'profileName' = ("setbyPolicy_" + $nameGUID)
+                }
 
                 try {
                     Write-Host "`tEvaluating if Policy exists." -ForegroundColor White
-                    $definition = Get-AzPolicyDefinition -Name $displayName ManagementGroupName $managementGroupName -ErrorAction Stop
+                    $definition = Get-AzPolicyDefinition -Name $displayName -ManagementGroupName $managementGroup.Name -ErrorAction Stop
                     Write-Host "`t`tPolicy exists. Moving to assignment task." -ForegroundColor Green
                 }
                 catch {
@@ -195,8 +195,8 @@ function Deploy-DiagnosticSettings {
                 if ($boolCreatePolicy){
                     Write-Host "`tCreating Policy." -ForegroundColor White
                     try {
-                        $definition = New-AzPolicyDefinition -Name $displayName -Policy $policy -Parameter $parameters -ManagementGroupName $managementGroupName  -ErrorAction Stop
-                        Write-Host ("`t`tCreated Azure Policy: " + $displayName + ", for management group: " + $managementGroupName) -ForegroundColor Green
+                        $definition = New-AzPolicyDefinition -Name $displayName -Policy $policy -Parameter $parameters -ManagementGroupName $managementGroup.Name  -ErrorAction Stop
+                        Write-Host ("`t`tCreated Azure Policy: " + $displayName + ", for management group: " + $managementGroup.Name) -ForegroundColor Green
                     }
                     catch {
                         Write-Warning "Failed to create policy. Exiting process."
@@ -204,25 +204,10 @@ function Deploy-DiagnosticSettings {
                     }
                     
                 }
-            }
-        
-            foreach ($managementGroupId in $userInputManagementGroupId){
-
-                $nameGUID = (new-guid).toString().replace("-","").substring(0,23)
-
-                $profileName = "setbyPolicy_" + $nameGUID
-
-                $policyParameters = @{
-                    'logAnalytics' = $logAnalyticWorkspaceResourceId
-                    'storageAccount' = $storageAccountResourceId
-                    'profileName' = $profileName
-                }
-                
-                $boolCreatAssignment = $false
 
                 try {
                     Write-Host "`tEvaluating if Policy Assignment exists." -ForegroundColor White
-                    $definition = Get-AzPolicyAssignment -Name $nameGUID -Scope $managementGroupId -ErrorAction Stop
+                    $assignment = Get-AzPolicyAssignment -PolicyDefinitionId $definition.PolicyDefinitionId -Scope $managementGroup.Id -ErrorAction Stop
                     Write-Host "`t`tPolicy Assignment exists. Moving on to next policy." -ForegroundColor Green
                 }
                 catch {
@@ -230,19 +215,25 @@ function Deploy-DiagnosticSettings {
                 }
 
                 if ($boolCreatAssignment){
-                    $assignment = New-AzPolicyAssignment -Name $nameGUID -DisplayName ($displayName + "-Assignment") -Location 'eastus' -Scope $managementGroupId -PolicyDefinition $definition -PolicyParameterObject $policyParameters -AssignIdentity  -ErrorAction Stop
-                    Write-Host ("`tAssigned Azure Policy: " + $nameGUID + "/ " + ($displayName + "-Assignment") + ", for management group: " + $managementGroupName) -ForegroundColor Green
 
-                    $role1DefinitionId = [GUID]($definition.properties.policyRule.then.details.roleDefinitionIds[0] -split "/")[4]
-                    $role2DefinitionId = [GUID]($definition.properties.policyRule.then.details.roleDefinitionIds[1] -split "/")[4]
-                    $objectID = [GUID]($assignment.Identity.principalId)
+                    try {
+                        $assignment = New-AzPolicyAssignment -Name $nameGUID -DisplayName ($displayName + "-Assignment") -Location 'eastus' -Scope $managementGroup.Id -PolicyDefinition $definition -PolicyParameterObject $policyParameters -AssignIdentity  -ErrorAction Stop
+                        Write-Host ("`t`tAssigned Azure Policy: " + $nameGUID + "/ " + ($displayName + "-Assignment") + " to management group: " + $managementGroup.Id) -ForegroundColor Green
 
-                    Start-Sleep -s 10
-                    New-AzRoleAssignment -Scope $managementGroupId -ObjectId $objectID -RoleDefinitionId $role1DefinitionId | Out-Null
-                    Start-Sleep -s 2
-                    New-AzRoleAssignment -Scope $managementGroupId -ObjectId $objectID -RoleDefinitionId $role2DefinitionId | Out-Null
-                    
-                    Write-Host ("`t`tAssigned Role Permissions to Azure Policy Assignment.") -ForegroundColor Green
+                        $role1DefinitionId = [GUID]($definition.properties.policyRule.then.details.roleDefinitionIds[0] -split "/")[4]
+                        $role2DefinitionId = [GUID]($definition.properties.policyRule.then.details.roleDefinitionIds[1] -split "/")[4]
+                        $objectID = [GUID]($assignment.Identity.principalId)
+
+                        Start-Sleep -s 1
+                        New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role1DefinitionId | Out-Null
+                        Start-Sleep -s 1
+                        New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role2DefinitionId | Out-Null
+                        
+                        Write-Host ("`t`tAssigned Role Permissions.") -ForegroundColor Green
+                    }
+                    catch {
+                        
+                    }
                 }
             }
         }
@@ -254,3 +245,5 @@ function Deploy-DiagnosticSettings {
 
     Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "false"
 }
+
+Deploy-DiagnosticSettings
