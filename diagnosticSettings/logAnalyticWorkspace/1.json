@@ -4,7 +4,8 @@
         "if": {
           "field": "type",
           "equals": "Microsoft.KeyVault/vaults",
-          "more": "changes"
+          "more": "changes",
+          "another": "change"
         }
     }
 }
