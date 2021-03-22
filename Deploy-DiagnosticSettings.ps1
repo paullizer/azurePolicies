@@ -16,7 +16,7 @@ function Deploy-DiagnosticSettings {
             Connect-AzAccount
         }
         catch {
-            Write-Error "Failed to connect to Azure. Please verify access to internet or permissions to Azure. Existing process."
+            Write-Warning "Failed to connect to Azure. Please verify access to internet or permissions to Azure. Existing process."
             Break Script
         }
     }
@@ -46,7 +46,7 @@ function Deploy-DiagnosticSettings {
             Set-AzContext -TenantId $tenant.Id
         }
         catch {
-            Write-Error "Unable to set Azure Context. Please verify access to context. Existing process."
+            Write-Warning "Unable to set Azure Context. Please verify access to context. Existing process."
             Break Script
         }
     }
@@ -67,10 +67,10 @@ function Deploy-DiagnosticSettings {
 
     foreach ($managementGroupName in $userInputManagementGroupName){
         try{
-            $managementGroup = Get-AzManagementGroup $managementGroupName - | Out-Null 
+            $managementGroup = Get-AzManagementGroup $managementGroupName
         }
         catch {
-            Write-Error "Unable to collect management group information. Please verify access to internet and permissions to resource. Existing process."
+            Write-Warning "Unable to collect management group information. Please verify access to internet and permissions to resource. Existing process."
             Break Script
         }
 
@@ -89,7 +89,7 @@ function Deploy-DiagnosticSettings {
         $logAnalyticWorkspaceObject = Get-AzResource -name $userInputLAWName
         $logAnalyticWorkspaceResourceId = $logAnalyticWorkspaceObject.ResourceId
 
-        if ($logAnalyticWorkspaceName){
+        if ($logAnalyticWorkspaceObject){
             $boolLAWFound = $true
         }
         else {
@@ -110,7 +110,7 @@ function Deploy-DiagnosticSettings {
         $storageAccountObject = Get-AzResource -name $userInputSAName
         $storageAccountResourceId = $storageAccountObject.ResourceId
 
-        if ($storageAccountName){
+        if ($storageAccountObject){
             $boolSAFound = $true
         }
         else {
@@ -122,74 +122,134 @@ function Deploy-DiagnosticSettings {
                 Exit 
             }
         }
-
     }
 
-    
-    Write-Host ("Processing JSON policy " + "diag-kv-law_sa.json") -ForegroundColor White
+    Write-Host ("Processing JSON policy.") -ForegroundColor White
 
-    $jsonPath = "C:\Users\paullizer\OneDrive - Microsoft\Repos\AutoGG\DeployAzureServices\diag-kv-law_sa.json"
+    for ($x = 1; $x -le 3; $x++){
 
-    $jsonFile = Get-Content $jsonPath
+        $jsonObject = ""
 
-    $jsonObject = $jsonFile | ConvertFrom-Json
+        $jsonPath = ("https://raw.githubusercontent.com/paullizer/azurePolicies/main/diagnosticSettings/storageAccount/" + $x +".json")
 
-    $resourceType = ($jsonObject.policyRule.if.equals).split(".")[($jsonObject.policyRule.if.equals).split(".").count-1]
+        try {
 
-    $purposeType = $jsonObject.policyRule.then.details.type.split(".")[$jsonObject.policyRule.then.details.type.split(".").count-1]
-    $purposeType = $purposeType.split("/")[1]
+            $jsonWeb = Invoke-WebRequest $jsonPath
+        
 
-    $displayName = "TEST-" + $purposeType + "-"
-
-    if ($resourceType.contains("/")) {
-        foreach ($value in ($resourceType.split("/"))){
-            $displayName += $value + "-"
         }
-    }
+        catch{
+            Write-Warning "Failed to pull policy from Github.com. Waiting 10 seconds to attempt one more time."
 
-    if ($displayName.endswith("-")){
-        $displayName = $displayName.substring(0,$displayName.length-1)
-    }
+            Start-Sleep -s 10
 
-    if ($displayName.length -gt 62){
-        $displayName = $displayName.substring(0,62)
-    }
+            $jsonWeb = Invoke-WebRequest $jsonPath
 
-    $policy = $jsonObject.PolicyRule | ConvertTo-Json -Depth 64
+        }
 
-    $parameters = $jsonObject.Parameters | ConvertTo-Json -Depth 64
+        $jsonObject = $jsonWeb.Content | ConvertFrom-Json
 
-    foreach ($managementGroupName in $userInputManagementGroupName){        
-        $definition = New-AzPolicyDefinition -Name $displayName -Policy $policy -Parameter $parameters -ManagementGroupName $managementGroupName
-        Write-Host ("`tCreated Azure Policy: " + $displayName + ", for management group: " + $managementGroupName) -ForegroundColor Green
-    }
-    
-    foreach ($managementGroupId in $userInputManagementGroupId){
+        if ($jsonObject){
 
-        $nameGUID = (new-guid).toString().replace("-","").substring(0,23)
+            $resourceType = ($jsonObject.policyRule.if.equals).split(".")[($jsonObject.policyRule.if.equals).split(".").count-1]
 
-        $profileName = "setbyPolicy_" + $nameGUID
+            $purposeType = $jsonObject.policyRule.then.details.type.split(".")[$jsonObject.policyRule.then.details.type.split(".").count-1]
+            $purposeType = $purposeType.split("/")[1]
 
-        $policyParameters = @{
-            'logAnalytics' = $logAnalyticWorkspaceResourceId
-            'storageAccount' = $storageAccountResourceId
-            'profileName' = $profileName
+
+            $displayName = "TEST-" + $purposeType + "-"
+
+            if ($resourceType.contains("/")) {
+                foreach ($value in ($resourceType.split("/"))){
+                    $displayName += $value + "-"
+                }
             }
 
-        $assignment = New-AzPolicyAssignment -Name $nameGUID -DisplayName ($displayName + "-Assignment") -Location 'eastus' -Scope $managementGroupId -PolicyDefinition $definition -PolicyParameterObject $policyParameters -AssignIdentity
-        Write-Host ("`tAssigned Azure Policy: " + $nameGUID + "/ " + ($displayName + "-Assignment") + ", for management group: " + $managementGroupName) -ForegroundColor Green
+            if ($displayName.endswith("-")){
+                $displayName = $displayName.substring(0,$displayName.length-1)
+            }
 
-        $role1DefinitionId = [GUID]($definition.properties.policyRule.then.details.roleDefinitionIds[0] -split "/")[4]
-        $role2DefinitionId = [GUID]($definition.properties.policyRule.then.details.roleDefinitionIds[1] -split "/")[4]
-        $objectID = [GUID]($assignment.Identity.principalId)
+            if ($displayName.length -gt 62){
+                $displayName = $displayName.substring(0,62)
+            }
 
-        Start-Sleep -s 10
-        New-AzRoleAssignment -Scope $managementGroupId -ObjectId $objectID -RoleDefinitionId $role1DefinitionId | Out-Null
-        Start-Sleep -s 2
-        New-AzRoleAssignment -Scope $managementGroupId -ObjectId $objectID -RoleDefinitionId $role2DefinitionId | Out-Null
+           
+            $policy = $jsonObject.PolicyRule | ConvertTo-Json -Depth 64
+
+            $parameters = $jsonObject.Parameters | ConvertTo-Json -Depth 64
+
         
-        Write-Host ("`t`tAssigned Role Permissions to Azure Policy Assignment.") -ForegroundColor Green
+            foreach ($managementGroupName in $userInputManagementGroupName){
 
+                $boolCreatePolicy = $false
+
+                try {
+                    Write-Host "`tEvaluating if Policy exists." -ForegroundColor White
+                    $definition = Get-AzPolicyDefinition -Name $displayName ManagementGroupName $managementGroupName -ErrorAction Stop
+                    Write-Host "`t`tPolicy exists. Moving to assignment task." -ForegroundColor Green
+                }
+                catch {
+                    $boolCreatePolicy = $true
+                }
+
+                if ($boolCreatePolicy){
+                    Write-Host "`tCreating Policy." -ForegroundColor White
+                    try {
+                        $definition = New-AzPolicyDefinition -Name $displayName -Policy $policy -Parameter $parameters -ManagementGroupName $managementGroupName  -ErrorAction Stop
+                        Write-Host ("`t`tCreated Azure Policy: " + $displayName + ", for management group: " + $managementGroupName) -ForegroundColor Green
+                    }
+                    catch {
+                        Write-Warning "Failed to create policy. Exiting process."
+                        Break Script
+                    }
+                    
+                }
+            }
+        
+            foreach ($managementGroupId in $userInputManagementGroupId){
+
+                $nameGUID = (new-guid).toString().replace("-","").substring(0,23)
+
+                $profileName = "setbyPolicy_" + $nameGUID
+
+                $policyParameters = @{
+                    'logAnalytics' = $logAnalyticWorkspaceResourceId
+                    'storageAccount' = $storageAccountResourceId
+                    'profileName' = $profileName
+                }
+                
+                $boolCreatAssignment = $false
+
+                try {
+                    Write-Host "`tEvaluating if Policy Assignment exists." -ForegroundColor White
+                    $definition = Get-AzPolicyAssignment -Name $nameGUID -Scope $managementGroupId -ErrorAction Stop
+                    Write-Host "`t`tPolicy Assignment exists. Moving on to next policy." -ForegroundColor Green
+                }
+                catch {
+                    $boolCreatAssignment = $true
+                }
+
+                if ($boolCreatAssignment){
+                    $assignment = New-AzPolicyAssignment -Name $nameGUID -DisplayName ($displayName + "-Assignment") -Location 'eastus' -Scope $managementGroupId -PolicyDefinition $definition -PolicyParameterObject $policyParameters -AssignIdentity  -ErrorAction Stop
+                    Write-Host ("`tAssigned Azure Policy: " + $nameGUID + "/ " + ($displayName + "-Assignment") + ", for management group: " + $managementGroupName) -ForegroundColor Green
+
+                    $role1DefinitionId = [GUID]($definition.properties.policyRule.then.details.roleDefinitionIds[0] -split "/")[4]
+                    $role2DefinitionId = [GUID]($definition.properties.policyRule.then.details.roleDefinitionIds[1] -split "/")[4]
+                    $objectID = [GUID]($assignment.Identity.principalId)
+
+                    Start-Sleep -s 10
+                    New-AzRoleAssignment -Scope $managementGroupId -ObjectId $objectID -RoleDefinitionId $role1DefinitionId | Out-Null
+                    Start-Sleep -s 2
+                    New-AzRoleAssignment -Scope $managementGroupId -ObjectId $objectID -RoleDefinitionId $role2DefinitionId | Out-Null
+                    
+                    Write-Host ("`t`tAssigned Role Permissions to Azure Policy Assignment.") -ForegroundColor Green
+                }
+            }
+        }
+        else {
+            Write-Warning "Failed to collect policy from Github.com after two attempts. Validate access to internet and to github.com. Process will review where it left off and will resume when restrated. Exiting process."
+            Break Script
+        }
     }
 
     Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "false"
