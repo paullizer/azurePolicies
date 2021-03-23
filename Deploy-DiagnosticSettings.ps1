@@ -6,6 +6,43 @@ function Deploy-DiagnosticSettings {
     
     $policyTotal = 58
 
+    Write-Host "`nValidating Azure PowerShell is installed`n"
+    
+    try{
+        $azureModuleObjects = Get-Module Az*
+        if (!$azureModuleObjects){
+            Write-Warning "Azure PowerShell is not installed."
+            Write-Host "Checking for elevated permissions..."
+            if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(`
+                [Security.Principal.WindowsBuiltInRole] "Administrator")) {
+                Write-Warning "Insufficient permissions to install Azure PowerShell Module. Open the PowerShell console as an administrator and run this script again."
+                Break
+            }
+            else {
+                Write-Host "`t`tCode is running as administrator" -ForegroundColor Green
+                Write-Host "`tAttempting to install Azure PowerShell..."
+                Install-Module -Name Az -AllowClobber -Scope AllUsers
+                Write-Host "`t`tAzure PowerShell Installed." -ForegroundColor Green
+
+            }
+        }
+    }
+    catch {
+        Write-Warning "`tAzure PowerShell is not installed."
+        Write-Host "`tChecking for elevated permissions..."
+        if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(`
+            [Security.Principal.WindowsBuiltInRole] "Administrator")) {
+            Write-Warning "`tInsufficient permissions to install Azure PowerShell Module. Open the PowerShell console as an administrator and run this script again."
+            Break
+        }
+        else {
+            Write-Host "`t`tCode is running as administrator" -ForegroundColor Green
+                Write-Host "`tAttempting to install Azure PowerShell..."
+                Install-Module -Name Az -AllowClobber -Scope AllUsers
+                Write-Host "`t`tAzure PowerShell Installed." -ForegroundColor Green
+        }
+    }
+
     try {
         $azContext = Get-AzContext
     }
