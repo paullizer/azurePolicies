@@ -4,7 +4,7 @@ function Deploy-DiagnosticSettings {
 
     Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
     
-    $policyTotal = 3
+    $policyTotal = 58
 
     try {
         $azContext = Get-AzContext
@@ -150,8 +150,9 @@ function Deploy-DiagnosticSettings {
     $storageAccountObject = Get-AzResource -name $userInputSAName
     $storageAccountResourceId = $storageAccountObject.ResourceId
 
+
     if ($storageAccountObject){
-        $boolSAFound = $true
+        $boolCorrectUserInput = $true
     }
     else {
         Write-Warning "Unable to find Storage Account, please enter valid name or confirm your access to resource."
@@ -162,8 +163,6 @@ function Deploy-DiagnosticSettings {
             Exit 
         }
     }
-
-        $boolCorrectUserInput = $true
 
     while ($boolCorrectUserInput) {
         
@@ -304,22 +303,37 @@ function Deploy-DiagnosticSettings {
                 if ($boolCreatAssignment){
                     try {
                         $assignment = New-AzPolicyAssignment -Name $nameGUID -DisplayName ($displayName + "-Assignment") -Location 'eastus' -Scope $managementGroup.Id -PolicyDefinition $definition -PolicyParameterObject $policyParameters -AssignIdentity
-                        Write-Host ("`t`tAssigned Azure Policy: " + $nameGUID + "/ " + ($displayName + "-Assignment") + " to management group: " + $managementGroup.Id) -ForegroundColor Green
+                        Write-Host ("`t`tAssigned Azure Policy: " + $nameGUID + "/ " + ($displayName + "-Assignment") + " to management group: " + $managementGroup.Name) -ForegroundColor Green
 
-                        $role1DefinitionId = [GUID]($definition.properties.policyRule.then.details.roleDefinitionIds[0] -split "/")[4]
-                        $role2DefinitionId = [GUID]($definition.properties.policyRule.then.details.roleDefinitionIds[1] -split "/")[4]
-                        $objectID = [GUID]($assignment.Identity.principalId)
-
-                        Start-Sleep -s 5
-                        New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role1DefinitionId | Out-Null
-                        Start-Sleep -s 2
-                        New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role2DefinitionId | Out-Null
-                        
-                        Write-Host ("`t`tAssigned Role Permissions.") -ForegroundColor Green
                     }
                     catch {
-                        
+                        Write-Warning ("Failed to Assign Azure Policy: " + $nameGUID + "/ " + ($displayName + "-Assignment") + " to management group: " + $managementGroup.Name)
                     }
+
+                    $role1DefinitionId = [GUID]($definition.properties.policyRule.then.details.roleDefinitionIds[0] -split "/")[4]
+                    $role2DefinitionId = [GUID]($definition.properties.policyRule.then.details.roleDefinitionIds[1] -split "/")[4]
+                    $objectID = [GUID]($assignment.Identity.principalId)
+
+                    try {            
+                        Start-Sleep -s 2            
+                        New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop
+                    }
+                    catch {
+                        Start-Sleep -s 8
+                        New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop
+                    }
+
+                    Write-Host ("`t`tAssigned Role Permissions for Account: " + $role1DefinitionId) -ForegroundColor Green
+
+                    try {                        
+                        New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
+                    }
+                    catch {
+                        Start-Sleep -s 5
+                        New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
+                    }
+
+                    Write-Host ("`t`tAssigned Role Permissions for Account: " + $role2DefinitionId) -ForegroundColor Green
                 }
             }
         }
@@ -332,6 +346,6 @@ function Deploy-DiagnosticSettings {
     Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "false"
 }
 
-cls
+Clear-Host
 
 Deploy-DiagnosticSettings
