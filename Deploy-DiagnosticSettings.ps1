@@ -169,13 +169,13 @@ function Deploy-DiagnosticSettings {
         $array = @('~', '!', '@', '#', '$', '%', '^', '&', '\(', '\)', '-', '.+', '=', '}', '{', '\\', '/', '|', ';', ',', ':', '<', '>', '\?', '"', '\*')
         $boolContainsSpecial = $false
 
-        $userInputPrepend = Read-Host "`nEnter characters to prepend Azure Policy Display name [1-4 characters, e.g. 2021 or 0014 or TEST, no special characters]"
+        $userInputPrepend = Read-Host "`nEnter characters to prepend Azure Policy Display name [1-4 characters, e.g. 0001, TEST, or 11AB; NO special characters]"
 
         switch ($userInputPrepend.Length) {
             {1..4 -contains $_} { 
                 foreach($char in $array){
                     if($userInputPrepend.contains( $char )){
-                        Write-Warning "Contains Special characters. Please enter [1-4 characters, e.g. 2021 or 0014 or TEST, no special characters]" 
+                        Write-Warning "Contains Special characters. Please enter [1-4 characters, e.g. 0001, TEST, or 11AB; NO special characters]" 
                         $boolContainsSpecial = $true
                         Break
                     }
@@ -187,10 +187,10 @@ function Deploy-DiagnosticSettings {
                 }
             }
             {$_ -gt 4} { 
-                Write-Warning "Too many characters. Please enter [1-4 characters, e.g. 2021 or 0014 or TEST]" 
+                Write-Warning "Too many characters. Please enter [1-4 characters, e.g. 0001, TEST, or 11AB; NO special characters]" 
             }
             Default { 
-                Write-Warning "No characters entered. Please enter [1-4 characters, e.g. 2021 or 0014 or TEST]" 
+                Write-Warning "No characters entered. Please enter [1-4 characters, e.g. 0001, TEST, or 11AB; NO special characters]" 
             }
         }
     }
@@ -325,11 +325,12 @@ function Deploy-DiagnosticSettings {
 
                     Write-Host ("`t`tAssigned Role Permissions for Account: " + $role1DefinitionId) -ForegroundColor Green
 
-                    try {                        
+                    try {       
+                        Start-Sleep -s 1                 
                         New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
                     }
                     catch {
-                        Start-Sleep -s 5
+                        Start-Sleep -s 4
                         New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
                     }
 
