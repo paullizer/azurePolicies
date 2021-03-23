@@ -1,7 +1,5 @@
 function Deploy-DiagnosticSettings {
 
-    cls
-
     Write-Host "`nThis process will deploy Azure Policies that enable the delivery of diagnostic settings to a Log Analytic Workspace and archive them to a Storage Account.`n" -ForegroundColor Cyan
 
     Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
@@ -304,8 +302,6 @@ function Deploy-DiagnosticSettings {
                 }
 
                 if ($boolCreatAssignment){
-                    #Write-Host "post here"
-
                     try {
                         $assignment = New-AzPolicyAssignment -Name $nameGUID -DisplayName ($displayName + "-Assignment") -Location 'eastus' -Scope $managementGroup.Id -PolicyDefinition $definition -PolicyParameterObject $policyParameters -AssignIdentity
                         Write-Host ("`t`tAssigned Azure Policy: " + $nameGUID + "/ " + ($displayName + "-Assignment") + " to management group: " + $managementGroup.Id) -ForegroundColor Green
@@ -335,5 +331,7 @@ function Deploy-DiagnosticSettings {
 
     Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "false"
 }
+
+cls
 
 Deploy-DiagnosticSettings
