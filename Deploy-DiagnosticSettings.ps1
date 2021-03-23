@@ -424,6 +424,8 @@ function Deploy-DiagnosticSettings {
     }
 
     Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "false"
+
+    Write-Host "`nPolicy Deployment Complete." -ForegroundColor Green
 }
 
 Clear-Host
