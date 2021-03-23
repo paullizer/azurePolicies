@@ -1,5 +1,9 @@
 function Deploy-DiagnosticSettings {
 
+    Write-Host "This process will deploy Azure Policies that enable the delivery of diagnostic settings to a Log Analytic Workspace and archive them to a Storage Account."
+
+    $test = $true
+
     Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
     
     $policyTotal = 3
@@ -21,9 +25,13 @@ function Deploy-DiagnosticSettings {
         }
     }
 
+    $boolTryAgain = $true
     $boolTenantFound = $false
     while (!$boolTenantFound) {
-        $userInputTenantId = Read-Host "Please enter Tenant Id"
+
+        if ($boolTryAgain){
+            $userInputTenantId = Read-Host "Please enter Tenant Id"
+        }
 
         $tenant = Get-AzTenant $userInputTenantId
         
@@ -32,13 +40,25 @@ function Deploy-DiagnosticSettings {
         }
         else {
             Write-Warning "Unable to find Tenant, please enter valid name or confirm your access to resource."
-
+                
             $userInputTryAgain = Read-Host "Do you want to try again? [Y or Yes, N or No]"
 
-            if (($userInputTryAgain.ToLower() -eq "n") -or ($userInputTryAgain.ToLower() -eq "no")){
-                Break Script 
+            switch ($userInputTryAgain.ToLower()) {
+                "n" {
+                    Break Script
+                }
+                "no" { 
+                    Break Script
+                }
+                "y" { $boolTryAgain = $true }
+                "yes" { $boolTryAgain = $true }
+                Default { 
+                    Write-Warning "Incorrect value. Please enter [Y or Yes, N or No]" 
+                    $boolTryAgain = $false
+                }
             }
         }
+
     }
 
     if ($azContext.Tenant.Id -ne $tenant.Id){
@@ -56,13 +76,37 @@ function Deploy-DiagnosticSettings {
     [System.Collections.ArrayList]$userInputManagementGroupName = @()
     [System.Collections.ArrayList]$managementGroups = @()
     
+    $boolTryAgain = $true
+
     $boolMoreManagementGroups = $true
     while ($boolMoreManagementGroups) {
-        $userInputManagementGroupName.Add((Read-Host "Please enter Management Group")) | Out-Null
-        $userInputAddAnotherMG = Read-Host "Do you want to enter another Management Group? [Y or Yes, N or No]"
-        if (($userInputAddAnotherMG.ToLower() -eq "n") -or ($userInputAddAnotherMG.ToLower() -eq "no")){
-            $boolMoreManagementGroups = $false 
+        if ($boolTryAgain){
+            $userInputManagementGroupName.Add((Read-Host "Please enter Management Group")) | Out-Null
         }
+        $userInputAddAnotherMG = Read-Host "Do you want to enter another Management Group? [Y or Yes, N or No]"
+
+            switch ($userInputAddAnotherMG.ToLower()) {
+                "n" { 
+                    $boolMoreManagementGroups = $false
+
+                }
+                "no" { 
+                    $boolMoreManagementGroups = $false 
+
+                }
+                "y" {  
+                    $boolTryAgain = $true
+                }
+                "yes" { 
+                    $boolTryAgain = $true
+                 }
+                Default { 
+                    Write-Warning "Incorrect value. Please enter [Y or Yes, N or No]" 
+                    $boolTryAgain = $false
+                }
+            
+        }
+
     }
 
     foreach ($managementGroupName in $userInputManagementGroupName){
@@ -128,7 +172,7 @@ function Deploy-DiagnosticSettings {
 
         Write-Host ("Processing JSON policy: " + $x + ".json") -ForegroundColor White
 
-        $jsonPath = ("https://raw.githubusercontent.com/paullizer/azurePolicies/main/diagnosticSettings/storageAccount/" + $x +".json")
+        $jsonPath = ("https://raw.githubusercontent.com/paullizer/azurePolicies/main/diagnosticSettings/" + $x +".json")
 
         try {
             $jsonWeb = Invoke-WebRequest $jsonPath
@@ -150,7 +194,12 @@ function Deploy-DiagnosticSettings {
             $purposeType = $jsonObject.policyRule.then.details.type.split(".")[$jsonObject.policyRule.then.details.type.split(".").count-1]
             $purposeType = $purposeType.split("/")[1]
 
-            $displayName = "TEST-" + $purposeType + "-"
+            if($test){
+                $displayName = "TEST-" + $purposeType + "-"
+            }
+            else {
+                $displayName = $purposeType + "-"
+            }
 
             if ($resourceType.contains("/")) {
                 foreach ($value in ($resourceType.split("/"))){
