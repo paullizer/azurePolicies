@@ -1,8 +1,8 @@
 function Deploy-DiagnosticSettings {
 
-    Write-Host "This process will deploy Azure Policies that enable the delivery of diagnostic settings to a Log Analytic Workspace and archive them to a Storage Account."
+    cls
 
-    $test = $true
+    Write-Host "`nThis process will deploy Azure Policies that enable the delivery of diagnostic settings to a Log Analytic Workspace and archive them to a Storage Account.`n" -ForegroundColor Cyan
 
     Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
     
@@ -71,7 +71,7 @@ function Deploy-DiagnosticSettings {
         }
     }
 
-    Write-Host ("Connected to " + $tenant.name + " with Tenant ID " + $tenant.Id) -ForegroundColor Green
+    Write-Host ("`tConnected to " + $tenant.name + " with Tenant ID " + $tenant.Id) -ForegroundColor Green
 
     [System.Collections.ArrayList]$userInputManagementGroupName = @()
     [System.Collections.ArrayList]$managementGroups = @()
@@ -81,9 +81,9 @@ function Deploy-DiagnosticSettings {
     $boolMoreManagementGroups = $true
     while ($boolMoreManagementGroups) {
         if ($boolTryAgain){
-            $userInputManagementGroupName.Add((Read-Host "Please enter Management Group")) | Out-Null
+            $userInputManagementGroupName.Add((Read-Host "`nPlease enter Management Group")) | Out-Null
         }
-        $userInputAddAnotherMG = Read-Host "Do you want to enter another Management Group? [Y or Yes, N or No]"
+        $userInputAddAnotherMG = Read-Host "`tDo you want to enter another Management Group? [Y or Yes, N or No]"
 
             switch ($userInputAddAnotherMG.ToLower()) {
                 "n" { 
@@ -128,7 +128,7 @@ function Deploy-DiagnosticSettings {
 
     $boolLAWFound = $false
     while (!$boolLAWFound) {
-        $userInputLAWName = Read-Host "Please enter Log Analytics Workspace Name"
+        $userInputLAWName = Read-Host "`nPlease enter Log Analytics Workspace Name"
 
         $logAnalyticWorkspaceObject = Get-AzResource -name $userInputLAWName
         $logAnalyticWorkspaceResourceId = $logAnalyticWorkspaceObject.ResourceId
@@ -137,9 +137,9 @@ function Deploy-DiagnosticSettings {
             $boolLAWFound = $true
         }
         else {
-            Write-Host "Unable to find Log Analytics Workspace, please enter valid name or confirm your access to resource."
+            Write-Warning "Unable to find Log Analytics Workspace, please enter valid name or confirm your access to resource."
 
-            $userInputTryAgain = Read-Host "Do you want to try again? [Y or Yes, N or No]"
+            $userInputTryAgain = Read-Host "`tDo you want to try again? [Y or Yes, N or No]"
 
             if (($userInputTryAgain.ToLower() -eq "n") -or ($userInputTryAgain.ToLower() -eq "no")){
                 Exit 
@@ -147,30 +147,60 @@ function Deploy-DiagnosticSettings {
         }
     }
 
-    $boolSAFound = $false
-    while (!$boolSAFound) {
-        $userInputSAName = Read-Host "Please enter Storage Account Name"
+    $userInputSAName = Read-Host "`nPlease enter Storage Account Name"
 
-        $storageAccountObject = Get-AzResource -name $userInputSAName
-        $storageAccountResourceId = $storageAccountObject.ResourceId
+    $storageAccountObject = Get-AzResource -name $userInputSAName
+    $storageAccountResourceId = $storageAccountObject.ResourceId
 
-        if ($storageAccountObject){
-            $boolSAFound = $true
+    if ($storageAccountObject){
+        $boolSAFound = $true
+    }
+    else {
+        Write-Warning "Unable to find Storage Account, please enter valid name or confirm your access to resource."
+
+        $userInputTryAgain = Read-Host "`tDo you want to try again? [Y or Yes, N or No]"
+
+        if (($userInputTryAgain.ToLower() -eq "n") -or ($userInputTryAgain.ToLower() -eq "no")){
+            Exit 
         }
-        else {
-            Write-Host "Unable to find Storage Account, please enter valid name or confirm your access to resource."
+    }
 
-            $userInputTryAgain = Read-Host "Do you want to try again? [Y or Yes, N or No]"
+        $boolCorrectUserInput = $true
 
-            if (($userInputTryAgain.ToLower() -eq "n") -or ($userInputTryAgain.ToLower() -eq "no")){
-                Exit 
+    while ($boolCorrectUserInput) {
+        
+        $array = @('~', '!', '@', '#', '$', '%', '^', '&', '\(', '\)', '-', '.+', '=', '}', '{', '\\', '/', '|', ';', ',', ':', '<', '>', '\?', '"', '\*')
+        $boolContainsSpecial = $false
+
+        $userInputPrepend = Read-Host "`nEnter characters to prepend Azure Policy Display name [1-4 characters, e.g. 2021 or 0014 or TEST, no special characters]"
+
+        switch ($userInputPrepend.Length) {
+            {1..4 -contains $_} { 
+                foreach($char in $array){
+                    if($userInputPrepend.contains( $char )){
+                        Write-Warning "Contains Special characters. Please enter [1-4 characters, e.g. 2021 or 0014 or TEST, no special characters]" 
+                        $boolContainsSpecial = $true
+                        Break
+                    }
+                }
+
+                if (!$boolContainsSpecial){
+                    Write-Host "`tAzure Policies will start with '$userInputPrepend'" -ForegroundColor Green
+                    $boolCorrectUserInput = $false
+                }
+            }
+            {$_ -gt 4} { 
+                Write-Warning "Too many characters. Please enter [1-4 characters, e.g. 2021 or 0014 or TEST]" 
+            }
+            Default { 
+                Write-Warning "No characters entered. Please enter [1-4 characters, e.g. 2021 or 0014 or TEST]" 
             }
         }
     }
     
     for ($x = 1; $x -le $policyTotal; $x++){
 
-        Write-Host ("Processing JSON policy: " + $x + ".json") -ForegroundColor White
+        Write-Host ("`nProcessing JSON policy: " + $x + ".json") -ForegroundColor White
 
         $jsonPath = ("https://raw.githubusercontent.com/paullizer/azurePolicies/main/diagnosticSettings/" + $x +".json")
 
@@ -194,12 +224,8 @@ function Deploy-DiagnosticSettings {
             $purposeType = $jsonObject.policyRule.then.details.type.split(".")[$jsonObject.policyRule.then.details.type.split(".").count-1]
             $purposeType = $purposeType.split("/")[1]
 
-            if($test){
-                $displayName = "TEST-" + $purposeType + "-"
-            }
-            else {
-                $displayName = $purposeType + "-"
-            }
+            $displayName = $userInputPrepend + "-" + $purposeType + "-"
+
 
             if ($resourceType.contains("/")) {
                 foreach ($value in ($resourceType.split("/"))){
@@ -288,9 +314,9 @@ function Deploy-DiagnosticSettings {
                         $role2DefinitionId = [GUID]($definition.properties.policyRule.then.details.roleDefinitionIds[1] -split "/")[4]
                         $objectID = [GUID]($assignment.Identity.principalId)
 
-                        Start-Sleep -s 1
+                        Start-Sleep -s 5
                         New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role1DefinitionId | Out-Null
-                        Start-Sleep -s 1
+                        Start-Sleep -s 2
                         New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role2DefinitionId | Out-Null
                         
                         Write-Host ("`t`tAssigned Role Permissions.") -ForegroundColor Green
