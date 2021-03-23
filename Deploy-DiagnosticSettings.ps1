@@ -195,6 +195,18 @@ function Deploy-DiagnosticSettings {
         }
     }
     
+    
+    try {
+        Write-Host "`nConnecting to Github.com for Azure Policies..."
+        $jsonWeb = Invoke-WebRequest ("https://raw.githubusercontent.com/paullizer/azurePolicies/main/diagnosticSettings/1.json")
+        Write-Host "`tConnected to Github.com" -ForegroundColor Green
+    }
+    catch{
+        Write-Warning "Failed"
+    }
+    
+
+
     for ($x = 1; $x -le $policyTotal; $x++){
 
         Write-Host ("`nProcessing JSON policy: " + $x + ".json") -ForegroundColor White
@@ -216,26 +228,56 @@ function Deploy-DiagnosticSettings {
 
         if ($jsonObject){
 
-            $resourceType = ($jsonObject.policyRule.if.equals).split(".")[($jsonObject.policyRule.if.equals).split(".").count-1]
+            try {
+                $resourceType = ($jsonObject.policyRule.if.equals).split(".")[($jsonObject.policyRule.if.equals).split(".").count-1]
+            }
+            catch {
 
-            $purposeType = $jsonObject.policyRule.then.details.type.split(".")[$jsonObject.policyRule.then.details.type.split(".").count-1]
-            $purposeType = $purposeType.split("/")[1]
+            }
+
+            try {
+                $purposeType = $jsonObject.policyRule.then.details.type.split(".")[$jsonObject.policyRule.then.details.type.split(".").count-1]
+            }
+            catch {
+
+            }
+
+            try {
+                $purposeType = $purposeType.split("/")[1]
+            }
+            catch {
+
+            }
 
             $displayName = $userInputPrepend + "-" + $purposeType + "-"
 
-
-            if ($resourceType.contains("/")) {
-                foreach ($value in ($resourceType.split("/"))){
-                    $displayName += $value + "-"
+            try {
+                if ($resourceType.contains("/")) {
+                    foreach ($value in ($resourceType.split("/"))){
+                        $displayName += $value + "-"
+                    }
                 }
             }
+            catch {
 
-            if ($displayName.endswith("-")){
-                $displayName = $displayName.substring(0,$displayName.length-1)
             }
 
-            if ($displayName.length -gt 62){
-                $displayName = $displayName.substring(0,62)
+            try {
+                if ($displayName.endswith("-")){
+                    $displayName = $displayName.substring(0,$displayName.length-1)
+                }
+            }
+            catch {
+                
+            }
+
+            try {
+                if ($displayName.length -gt 62){
+                    $displayName = $displayName.substring(0,62)
+                }
+            }
+            catch {
+                
             }
 
             $policy = $jsonObject.PolicyRule | ConvertTo-Json -Depth 64
