@@ -23,7 +23,6 @@ function Deploy-DiagnosticSettings {
                 Write-Host "`tAttempting to install Azure PowerShell..."
                 Install-Module -Name Az -AllowClobber -Scope AllUsers
                 Write-Host "`t`tAzure PowerShell Installed." -ForegroundColor Green
-
             }
         }
     }
@@ -120,28 +119,26 @@ function Deploy-DiagnosticSettings {
         }
         $userInputAddAnotherMG = Read-Host "`tDo you want to enter another Management Group? [Y or Yes, N or No]"
 
-            switch ($userInputAddAnotherMG.ToLower()) {
-                "n" { 
-                    $boolMoreManagementGroups = $false
+        switch ($userInputAddAnotherMG.ToLower()) {
+            "n" { 
+                $boolMoreManagementGroups = $false
 
-                }
-                "no" { 
-                    $boolMoreManagementGroups = $false 
+            }
+            "no" { 
+                $boolMoreManagementGroups = $false 
 
+            }
+            "y" {  
+                $boolTryAgain = $true
+            }
+            "yes" { 
+                $boolTryAgain = $true
                 }
-                "y" {  
-                    $boolTryAgain = $true
-                }
-                "yes" { 
-                    $boolTryAgain = $true
-                 }
-                Default { 
-                    Write-Warning "Incorrect value. Please enter [Y or Yes, N or No]" 
-                    $boolTryAgain = $false
-                }
-            
+            Default { 
+                Write-Warning "Incorrect value. Please enter [Y or Yes, N or No]" 
+                $boolTryAgain = $false
+            }
         }
-
     }
 
     foreach ($managementGroupName in $userInputManagementGroupName){
@@ -232,7 +229,6 @@ function Deploy-DiagnosticSettings {
         }
     }
     
-    
     try {
         Write-Host "`nConnecting to Github.com for Azure Policies..."
         $jsonWeb = Invoke-WebRequest ("https://raw.githubusercontent.com/paullizer/azurePolicies/main/diagnosticSettings/1.json")
@@ -241,11 +237,8 @@ function Deploy-DiagnosticSettings {
     catch{
         Write-Warning "Failed"
     }
-    
-
 
     for ($x = 1; $x -le $policyTotal; $x++){
-
         Write-Host ("`nProcessing JSON policy: " + $x + ".json") -ForegroundColor White
 
         $jsonPath = ("https://raw.githubusercontent.com/paullizer/azurePolicies/main/diagnosticSettings/" + $x +".json")
@@ -255,7 +248,6 @@ function Deploy-DiagnosticSettings {
         }
         catch{
             Write-Warning "Failed to pull policy from Github.com. Waiting 5 seconds to attempt one more time."
-
             Start-Sleep -s 5
 
             $jsonWeb = Invoke-WebRequest $jsonPath
