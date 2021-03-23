@@ -17,6 +17,10 @@
                 "equals": "true"
               },
               {
+                "field": "Microsoft.Insights/diagnosticSettings/storageAccountId",
+                "equals": "[parameters('storageAccount')]"
+              },
+              {
                 "field": "Microsoft.Insights/diagnosticSettings/workspaceId",
                 "equals": "[parameters('logAnalytics')]"
               }
@@ -36,6 +40,10 @@
                   "resourceName": {
                     "type": "string"
                   },
+                  "storageAccount": {
+                    "type": "string"
+                  },
+                
                   "logAnalytics": {
                     "type": "string"
                   },
@@ -58,6 +66,7 @@
                     "location": "[parameters('location')]",
                     "dependsOn": [],
                     "properties": {
+                      "storageAccountId": "[parameters('storageAccount')]",
                       "workspaceId": "[parameters('logAnalytics')]",
                       "metrics": [
                         {
@@ -77,6 +86,9 @@
                 "outputs": {}
               },
               "parameters": {
+                "storageAccount": {
+                  "value": "[parameters('storageAccount')]"
+                },
                 "logAnalytics": {
                   "value": "[parameters('logAnalytics')]"
                 },
@@ -99,6 +111,14 @@
       }
     },
     "parameters": {
+      "storageAccount": {
+        "type": "String",
+        "metadata": {
+          "displayName": "Storage Account",
+          "description": "Select Storage Account from dropdown list.",
+          "strongType": "Microsoft.Storage/storageAccounts"
+        }
+      },
       "logAnalytics": {
         "type": "String",
         "metadata": {
