@@ -9,7 +9,7 @@ function Deploy-DiagnosticSettings {
     Write-Host "`nValidating Azure PowerShell is installed`n"
     
     try{
-        $azureModuleObjects = Get-Module Az*
+        $azureModuleObjects = Get-Module -ListAvailable -Name Az.*
         if (!$azureModuleObjects){
             Write-Warning "Azure PowerShell is not installed."
             Write-Host "Checking for elevated permissions..."
