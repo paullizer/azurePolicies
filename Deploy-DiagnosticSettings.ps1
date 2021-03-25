@@ -468,6 +468,7 @@ do
 }
 until (($userInput -eq '4') -or ($userInput.ToLower() -eq 'd'))
 
+$boolCorrectUserInput = $true
 
 while ($boolCorrectUserInput) {
     
@@ -501,6 +502,7 @@ while ($boolCorrectUserInput) {
 }
 
 if ($boolDeployLogAnalyticWorkspaceSettings ){
+
     $boolLAWFound = $false
     while (!$boolLAWFound) {
         $userInputLAWName = Read-Host "`nPlease enter Log Analytics Workspace Name"
@@ -534,7 +536,7 @@ if ($boolDeployStorageAccountSettings){
 
 
     if ($storageAccountObject){
-        $boolCorrectUserInput = $true
+        
     }
     else {
         Write-Warning "Unable to find Storage Account, please enter valid name or confirm your access to resource."
