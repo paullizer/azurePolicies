@@ -522,8 +522,6 @@ if ($boolDeployLogAnalyticWorkspaceSettings ){
             }
         }
     }
-
-    Deploy-DiagnosticSettingsPolicies "logAnalyticWorkspace" 
 }
 
 
@@ -547,8 +545,6 @@ if ($boolDeployStorageAccountSettings){
             Exit 
         }
     }
-
-    Deploy-DiagnosticSettingsPolicies "storageAccount"
 }
 
 
