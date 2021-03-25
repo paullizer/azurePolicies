@@ -410,7 +410,7 @@ $boolDeployStorageAccountSettings = $false
 do
  {
 
-    Write-Color "-------------------", " Diagnostic Policy Selection ", "-------------------" -Color Gray, White, Gray
+    Write-Color "`n-------------------", " Diagnostic Policy Selection ", "-------------------" -Color Gray, White, Gray
 
     if ($boolDeployLogAnalyticWorkspaceSettings){
         Write-Color "[", ([Char]8730).tostring(), "]", " Deploying Log Analytic Diagnostic Policies" -Color White, Green, White, White
@@ -550,14 +550,19 @@ if ($boolDeployStorageAccountSettings){
 }
 
 
+if ($boolDeployLogAnalyticWorkspaceSettings ){
 
+    Deploy-DiagnosticSettingsPolicies "logAnalyticWorkspace" 
+}
+
+
+if ($boolDeployStorageAccountSettings){
+
+    Deploy-DiagnosticSettingsPolicies "storageAccount"
+}
 
 
 
 Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "false"
 
 Write-Host "`nPolicy Deployment Complete." -ForegroundColor Green
-
-
-
-
