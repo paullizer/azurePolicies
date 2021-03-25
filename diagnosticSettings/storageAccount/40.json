@@ -42,10 +42,6 @@
                 "field": "Microsoft.Insights/diagnosticSettings/storageAccountId",
                 "equals": "[parameters('storageAccount')]"
               },
-              {
-                "field": "Microsoft.Insights/diagnosticSettings/logAnalyticsDestinationType",
-                "equals": "Dedicated"
-              }
             ]
           },
           "roleDefinitionIds": [
@@ -84,7 +80,6 @@
                     "dependsOn": [],
                     "properties": {
                       "storageAccountId": "[parameters('storageAccount')]",
-                      "logAnalyticsDestinationType": "Dedicated",
                       "metrics": [],
                       "logs": [
                         {
