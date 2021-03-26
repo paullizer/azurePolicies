@@ -44,7 +44,7 @@ function Deploy-DiagnosticSettingsPolicies {
         Break Script
     }
     
-    for ($x = 1; $x -le $policyTotal; $x++){
+    for ($x = 58; $x -le $policyTotal; $x++){
         Write-Host ("`nProcessing $diagnosticSettingsType policy: " + $x + ".json") -ForegroundColor DarkCyan
     
         $jsonPath = ("https://raw.githubusercontent.com/paullizer/azurePolicies/main/diagnosticSettings/" + $diagnosticSettingsType + "/" + $x +".json")
@@ -65,12 +65,24 @@ function Deploy-DiagnosticSettingsPolicies {
     
             try {
                 $resourceType = ($jsonObject.policyRule.if.equals).split(".")[($jsonObject.policyRule.if.equals).split(".").count-1]
+
+                if ($resourceType.contains("/")) {
+                    foreach ($value in ($resourceType.split("/"))){
+                        $displayName += $value + "-"
+                    }
+                }
             }
             catch {
                 try {
                     $subResourceType = "-" + $jsonObject.policyRule.then.details.deployment.properties.template.resources.properties.logs[0].category.substring(0,10)
 
                     $resourceType = ($jsonObject.policyRule.if.allof[0].equals).split(".")[($jsonObject.policyRule.if.allof[0].equals).split(".").count-1]
+
+                    if ($resourceType.contains("/")) {
+                        foreach ($value in ($resourceType.split("/"))){
+                            $displayName += $value + "-"
+                        }
+                    }
 
                     $resourceType += $subResourceType
                 }
@@ -91,17 +103,6 @@ function Deploy-DiagnosticSettingsPolicies {
                 $displayName = $userInputPrepend + "-" + $purposeType + "-LAW-"
             } elseif ($diagnosticSettingsType -eq "storageAccount") {
                 $displayName = $userInputPrepend + "-" + $purposeType + "-SA-"
-            }
-    
-            try {
-                if ($resourceType.contains("/")) {
-                    foreach ($value in ($resourceType.split("/"))){
-                        $displayName += $value + "-"
-                    }
-                }
-            }
-            catch {
-    
             }
     
             try {
