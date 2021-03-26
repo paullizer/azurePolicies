@@ -126,7 +126,8 @@ function Deploy-DiagnosticSettingsPolicies {
             foreach ($managementGroup in $managementGroups){
     
                 $boolCreatePolicy = $false
-                $boolCreatAssignment = $false
+                $boolAttemptAssignment = $false
+                $boolAttemptPermission = $false
                 $definition = ""
                 $assignment = ""
     
@@ -135,12 +136,12 @@ function Deploy-DiagnosticSettingsPolicies {
                 if ($diagnosticSettingsType -eq "logAnalyticWorkspace"){
                     $policyParameters = @{
                         'logAnalytics' = $logAnalyticWorkspaceResourceId
-                        #'profileName' = "setbypolicy"
+                        'profileName' = ("setbyPolicy_" + $nameGUID)
                     }
                 } elseif ($diagnosticSettingsType -eq "storageAccount"){
                     $policyParameters = @{
                         'storageAccount' = $storageAccountResourceId
-                        #'profileName' = "setbypolicy"
+                        'profileName' = ("setbyPolicy_" + $nameGUID)
                     }
                 } # elseif ($diagnosticSettingsType -eq "eventHub"){
                 #     $policyParameters = @{
@@ -148,9 +149,10 @@ function Deploy-DiagnosticSettingsPolicies {
                 #         'profileName' = ("setbyPolicy_" + $nameGUID)
                 #     }
                 # }
-    
+                
+                Write-Host ("`t" + $diagnosticSettingsType + " Policy") -ForegroundColor Cyan
                 try {
-                    Write-Host "`tEvaluating if Policy exists." -ForegroundColor White
+                    Write-Host "`tEvaluating if Policy exists." -ForegroundColor Gray
                     $definition = Get-AzPolicyDefinition -Name $displayName -ManagementGroupName $managementGroup.Name -ErrorAction Stop
                 }
                 catch {
@@ -177,55 +179,97 @@ function Deploy-DiagnosticSettingsPolicies {
                 }
     
                 try {
-                    Write-Host "`tEvaluating if Policy Assignment exists." -ForegroundColor White
+                    Write-Host "`tEvaluating if Policy Assignment exists." -ForegroundColor Gray
                     $assignment = Get-AzPolicyAssignment -PolicyDefinitionId $definition.PolicyDefinitionId -Scope $managementGroup.Id -ErrorAction Stop
-                    
                 }
                 catch {
-                    $boolCreatAssignment = $true
+                    Write-Host "`tCreating Policy Assignment." -ForegroundColor White
                 }
     
                 if($assignment){
-                    Write-Host "`t`tPolicy Assignment exists. Moving on to next policy." -ForegroundColor Green
+                    Write-Host "`t`tPolicy Assignment exists." -ForegroundColor Green
                 }
                 else {
-                    $boolCreatAssignment = $true
-                }
-    
-                if ($boolCreatAssignment){
                     try {
                         $assignment = New-AzPolicyAssignment -Name $nameGUID -DisplayName ($displayName + "-Assignment") -Location 'eastus' -Scope $managementGroup.Id -PolicyDefinition $definition -PolicyParameterObject $policyParameters -AssignIdentity
                         Write-Host ("`t`tAssigned Azure Policy: " + $nameGUID + "/ " + ($displayName + "-Assignment") + " to management group: " + $managementGroup.Name) -ForegroundColor Green
+                        $boolAttemptPermission = $true
     
                     }
                     catch {
                         Write-Warning ("Failed to Assign Azure Policy: " + $nameGUID + "/ " + ($displayName + "-Assignment") + " to management group: " + $managementGroup.Name)
                     }
-    
+                }
+
+                if ($assignment){
+                    Write-Host "`tEvaluating if Role \'Monitoring Contributor\' Permissions Exist." -ForegroundColor Gray
+                    
                     $role1DefinitionId = [GUID]($definition.properties.policyRule.then.details.roleDefinitionIds[0] -split "/")[4]
                     $role2DefinitionId = [GUID]($definition.properties.policyRule.then.details.roleDefinitionIds[1] -split "/")[4]
                     $objectID = [GUID]($assignment.Identity.principalId)
-    
-                    try {            
-                        Start-Sleep -s 2            
-                        $null = New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop                    }
-                    catch {
-                        Start-Sleep -s 8
-                        $null = New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop
-                    }
-    
-                    Write-Host ("`t`tAssigned Role Permissions for Account: " + $role1DefinitionId) -ForegroundColor Green
-    
-                    try {       
-                        Start-Sleep -s 1                 
-                        $null = New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
+                    
+                    try {
+                        $role = Get-AzRoleAssignment -scope $managementGroup.id -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop
                     }
                     catch {
-                        Start-Sleep -s 4
-                        $null = New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
+                        Write-Host "`tCreating \'Monitoring Contributor\' Role." -ForegroundColor White
+                    }
+
+                    if(!$role){
+                        try {            
+                            Start-Sleep -s 3           
+                            $role = New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop             
+                            Write-Host ("`t`tAssigned Role Permissions for Account: \'Monitoring Contributor\'") -ForegroundColor Green       
+                        }
+                        catch {
+                            try {
+                                Start-Sleep -s 8
+                                $role = New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop
+                                Write-Host ("`t`tAssigned Role Permissions for Account: \'Monitoring Contributor\'") -ForegroundColor Green
+                            }
+                            catch {
+                                Write-Warning ("`t`tFailed to assign Role Permissions for Account: \'Monitoring Contributor\'. Manually correct via Azure Portal")
+                            }
+                        }
+                    } else {
+                        Write-Host "`t`t\'Monitoring Contributor\' Role exists." -ForegroundColor Green
                     }
     
-                    Write-Host ("`t`tAssigned Role Permissions for Account: " + $role2DefinitionId) -ForegroundColor Green
+                    
+                    if ($diagnosticSettingsType -eq "logAnalyticWorkspace"){
+                        $roleName = "Log Analytics Contributor"
+                    } elseif ($diagnosticSettingsType -eq "storageAccount") {
+                        $roleName = "Storage Account Contributor"
+                    }
+
+                    Write-Host "`tEvaluating if Role \'$roleName\' Permissions Exist." -ForegroundColor Gray
+                    
+                    try {
+                        $role = Get-AzRoleAssignment -scope $managementGroup.id -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
+                    }
+                    catch {
+                        Write-Host "`tCreating \'$roleName\ Role." -ForegroundColor White
+                    }
+                    
+                    if(!$role){
+                        try {       
+                            Start-Sleep -s 1                 
+                            $null = New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
+                            Write-Host ("`t`tAssigned Role Permissions for Account: " + $roleName) -ForegroundColor Green
+                        }
+                        catch {
+                            try {       
+                                Start-Sleep -s 1                 
+                                $null = New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
+                                Write-Host ("`t`tAssigned Role Permissions for Account: " + $roleName) -ForegroundColor Green
+                            }
+                            catch {
+                                Write-Warning ("`t`tFailed to assign Role Permissions for Account: " + $roleName + ". Manually correct via Azure Portal")
+                            }
+                        }
+                    } else {
+                        Write-Host "`t`t\'$roleName\ Role exists." -ForegroundColor Green
+                    }
                 }
             }
         } else {
@@ -429,27 +473,47 @@ do
     # } else {
     #     Write-Color "3.  ", "Press ", "'3'", " or", " 'E(e)'", " to Deploy Event Hub Policies" -Color Gray, White, Cyan, White, Cyan, White
     # }
-
-    if ($boolDeployLogAnalyticWorkspaceSettings -or $boolDeployStorageAccountSettings){
-        Write-Color "4.  ", "Press ", "'4'", " or", " 'D(d)'", " to Complete Policy Selection" -Color Gray, White, Cyan, White, Cyan, White -LinesBefore 1
-
-        $userInput = Read-Host "`nPlease select a menu option:"
+    
+    if ($boolDeployLogAnalyticWorkspaceSettings -and $boolDeployStorageAccountSettings){
+        $userInput = "4"
     } else {
-        $userInput = Read-Host "`nPlease select a policy to deploy:"
+        if ($boolDeployLogAnalyticWorkspaceSettings -or $boolDeployStorageAccountSettings){
+            Write-Color "4.  ", "Press ", "'4'", " or", " 'D(d)'", " to Complete Policy Selection" -Color Gray, White, Cyan, White, Cyan, White -LinesBefore 1
+
+            $userInput = Read-Host "`nPlease select a menu option:"
+        } else {
+            $userInput = Read-Host "`nPlease select a policy to deploy:"
+        }
     }
 
     switch ($userInput.ToLower()) {
         "l" {
-            $boolDeployLogAnalyticWorkspaceSettings = $true
+            if ($boolDeployLogAnalyticWorkspaceSettings){
+                $boolDeployLogAnalyticWorkspaceSettings = $false
+            } else {
+                $boolDeployLogAnalyticWorkspaceSettings = $true
+            }
         }
         "1" {
-            $boolDeployLogAnalyticWorkspaceSettings = $true
+            if ($boolDeployLogAnalyticWorkspaceSettings){
+                $boolDeployLogAnalyticWorkspaceSettings = $false
+            } else {
+                $boolDeployLogAnalyticWorkspaceSettings = $true
+            }
         }
         "2" {
-            $boolDeployStorageAccountSettings = $true
+            if ($boolDeployStorageAccountSettings){
+                $boolDeployStorageAccountSettings = $false
+            } else {
+                $boolDeployStorageAccountSettings = $true
+            }
         }
         "s" {
-            $boolDeployStorageAccountSettings = $true
+            if ($boolDeployStorageAccountSettings){
+                $boolDeployStorageAccountSettings = $false
+            } else {
+                $boolDeployStorageAccountSettings = $true
+            }
         }
         # "3" {
         #     $boolDeployEventHubSettings = $true
@@ -527,22 +591,27 @@ if ($boolDeployLogAnalyticWorkspaceSettings ){
 
 
 if ($boolDeployStorageAccountSettings){
-    $userInputSAName = Read-Host "`nPlease enter Storage Account Name"
 
-    $storageAccountObject = Get-AzResource -name $userInputSAName
-    $storageAccountResourceId = $storageAccountObject.ResourceId
+    $boolSAFound = $false
+    while (!$boolSAFound) {
+
+        $userInputSAName = Read-Host "`nPlease enter Storage Account Name"
+
+        $storageAccountObject = Get-AzResource -name $userInputSAName
+        $storageAccountResourceId = $storageAccountObject.ResourceId
 
 
-    if ($storageAccountObject){
-        
-    }
-    else {
-        Write-Warning "Unable to find Storage Account, please enter valid name or confirm your access to resource."
+        if ($storageAccountObject){
+            $boolSAFound = $true
+        }
+        else {
+            Write-Warning "Unable to find Storage Account, please enter valid name or confirm your access to resource."
 
-        $userInputTryAgain = Read-Host "`tDo you want to try again? [Y or Yes, N or No]"
+            $userInputTryAgain = Read-Host "`tDo you want to try again? [Y or Yes, N or No]"
 
-        if (($userInputTryAgain.ToLower() -eq "n") -or ($userInputTryAgain.ToLower() -eq "no")){
-            Exit 
+            if (($userInputTryAgain.ToLower() -eq "n") -or ($userInputTryAgain.ToLower() -eq "no")){
+                Exit 
+            }
         }
     }
 }
