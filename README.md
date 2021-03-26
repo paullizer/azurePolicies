@@ -31,16 +31,16 @@ This initial configuration of Diagnostic Settings policies is a modification of 
 Deploy-DiagnosticSettings.ps1
 
 ## Screen Shots
-Example of the deployment process
+### Example of the deployment process
 ![image](https://user-images.githubusercontent.com/34814295/112682854-1325d200-8e47-11eb-9372-2cbc565d18eb.png)
 
-Example of the Policy Definition viewed in Azure Portal
+### Example of the Policy Definition viewed in Azure Portal
 ![image](https://user-images.githubusercontent.com/34814295/112238093-5c450e80-8c1a-11eb-95e9-3672ed3311b6.png)
 
-Example of Policy Assignment viewed in Azure Portal
+### Example of Policy Assignment viewed in Azure Portal
 ![image](https://user-images.githubusercontent.com/34814295/112238115-67983a00-8c1a-11eb-94c1-4cf96151da17.png)
 
-Example of the Policy in Action
+### Example of the Policy in Action
 Each diagnostic settings type is deployed on its own, the name of the setting is based on the Policy Assignment Id to simplify troubleshooting and tracking
 ![image](https://user-images.githubusercontent.com/34814295/112683012-554f1380-8e47-11eb-83b7-56303d035fa5.png)
 
