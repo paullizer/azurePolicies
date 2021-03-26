@@ -67,17 +67,20 @@ function Deploy-DiagnosticSettingsPolicies {
                 $resourceType = ($jsonObject.policyRule.if.equals).split(".")[($jsonObject.policyRule.if.equals).split(".").count-1]
             }
             catch {
-                $resourceType = ($jsonObject.policyRule.if.allof[0].equals).split(".")[($jsonObject.policyRule.if.allof[0].equals).split(".").count-1]
+                try {
+                    $subResourceType = "-" + $jsonObject.policyRule.then.details.deployment.properties.template.resources.properties.logs[0].category.substring(0,10)
+
+                    $resourceType = ($jsonObject.policyRule.if.allof[0].equals).split(".")[($jsonObject.policyRule.if.allof[0].equals).split(".").count-1]
+
+                    $resourceType += $subResourceType
+                }
+                catch {
+
+                }
             }
     
             try {
                 $purposeType = $jsonObject.policyRule.then.details.type.split(".")[$jsonObject.policyRule.then.details.type.split(".").count-1]
-            }
-            catch {
-    
-            }
-    
-            try {
                 $purposeType = $purposeType.split("/")[1]
             }
             catch {
