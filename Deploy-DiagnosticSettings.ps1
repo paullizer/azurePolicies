@@ -44,7 +44,7 @@ function Deploy-DiagnosticSettingsPolicies {
         Break Script
     }
     
-    for ($x = 58; $x -le $policyTotal; $x++){
+    for ($x = 1; $x -le $policyTotal; $x++){
         Write-Host ("`nProcessing $diagnosticSettingsType policy: " + $x + ".json") -ForegroundColor DarkCyan
     
         $jsonPath = ("https://raw.githubusercontent.com/paullizer/azurePolicies/main/diagnosticSettings/" + $diagnosticSettingsType + "/" + $x +".json")
