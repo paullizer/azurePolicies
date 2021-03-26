@@ -65,24 +65,12 @@ function Deploy-DiagnosticSettingsPolicies {
     
             try {
                 $resourceType = ($jsonObject.policyRule.if.equals).split(".")[($jsonObject.policyRule.if.equals).split(".").count-1]
-
-                if ($resourceType.contains("/")) {
-                    foreach ($value in ($resourceType.split("/"))){
-                        $displayName += $value + "-"
-                    }
-                }
             }
             catch {
                 try {
                     $subResourceType = "-" + $jsonObject.policyRule.then.details.deployment.properties.template.resources.properties.logs[0].category.substring(0,10)
 
                     $resourceType = ($jsonObject.policyRule.if.allof[0].equals).split(".")[($jsonObject.policyRule.if.allof[0].equals).split(".").count-1]
-
-                    if ($resourceType.contains("/")) {
-                        foreach ($value in ($resourceType.split("/"))){
-                            $displayName += $value + "-"
-                        }
-                    }
 
                     $resourceType += $subResourceType
                 }
@@ -103,6 +91,17 @@ function Deploy-DiagnosticSettingsPolicies {
                 $displayName = $userInputPrepend + "-" + $purposeType + "-LAW-"
             } elseif ($diagnosticSettingsType -eq "storageAccount") {
                 $displayName = $userInputPrepend + "-" + $purposeType + "-SA-"
+            }
+    
+            try {
+                if ($resourceType.contains("/")) {
+                    foreach ($value in ($resourceType.split("/"))){
+                        $displayName += $value + "-"
+                    }
+                }
+            }
+            catch {
+    
             }
     
             try {
@@ -224,7 +223,7 @@ function Deploy-DiagnosticSettingsPolicies {
                         }
                         catch {
                             try {
-                                Start-Sleep -s 8
+                                Start-Sleep -s 10
                                 $role = New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop
                                 Write-Host ("`t`tAssigned Role Permissions for Account: 'Monitoring Contributor'") -ForegroundColor Green
                             }
@@ -254,13 +253,13 @@ function Deploy-DiagnosticSettingsPolicies {
                     
                     if(!$role){
                         try {       
-                            Start-Sleep -s 1                 
+                            Start-Sleep -s 1             
                             $null = New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
                             Write-Host ("`t`tAssigned Role Permissions for Account: $roleName'") -ForegroundColor Green
                         }
                         catch {
                             try {       
-                                Start-Sleep -s 1                 
+                                Start-Sleep -s 10              
                                 $null = New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
                                 Write-Host ("`t`tAssigned Role Permissions for Account: $roleName'") -ForegroundColor Green
                             }
