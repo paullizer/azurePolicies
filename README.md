@@ -33,9 +33,11 @@ The Enterprise Scale policies only deploy Log Analytic Workspace configuration f
 9. Applies Role Permissions for each Policy assignment
 
 ## Future Updates
-1. Include new set of policies for sending logs and metrics to Event Hub
-5. Expand beyond diagnostic settings
-3. Create an Initiative and assign using Initiative
+1. Add header information
+2. Include new set of policies for sending logs and metrics to Event Hub
+3. Expand beyond diagnostic settings
+4. Create an Initiative and assign using Initiative
+5. Functionalize more of the code
 
 ## Execution
 Deploy-DiagnosticSettings.ps1
