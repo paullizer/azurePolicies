@@ -35,7 +35,7 @@ function Deploy-DiagnosticSettingsPolicies {
     )
 
     try {
-        Write-Host "`nConnecting to Github.com for Azure Policies..."
+        Write-Host "`nConnecting to Github.com for Azure '$diagnosticSettingsType' Policies..."
         $jsonWeb = Invoke-WebRequest ("https://github.com/paullizer/azurePolicies")
         Write-Host "`tConnected to Github.com" -ForegroundColor Green
     }
@@ -45,7 +45,7 @@ function Deploy-DiagnosticSettingsPolicies {
     }
     
     for ($x = 1; $x -le $policyTotal; $x++){
-        Write-Host ("`nProcessing JSON policy: " + $x + ".json") -ForegroundColor White
+        Write-Host ("`nProcessing $diagnosticSettingsType policy: " + $x + ".json") -ForegroundColor DarkCyan
     
         $jsonPath = ("https://raw.githubusercontent.com/paullizer/azurePolicies/main/diagnosticSettings/" + $diagnosticSettingsType + "/" + $x +".json")
     
@@ -67,7 +67,7 @@ function Deploy-DiagnosticSettingsPolicies {
                 $resourceType = ($jsonObject.policyRule.if.equals).split(".")[($jsonObject.policyRule.if.equals).split(".").count-1]
             }
             catch {
-    
+                $resourceType = ($jsonObject.policyRule.if.allof[0].equals).split(".")[($jsonObject.policyRule.if.allof[0].equals).split(".").count-1]
             }
     
             try {
@@ -126,8 +126,6 @@ function Deploy-DiagnosticSettingsPolicies {
             foreach ($managementGroup in $managementGroups){
     
                 $boolCreatePolicy = $false
-                $boolAttemptAssignment = $false
-                $boolAttemptPermission = $false
                 $definition = ""
                 $assignment = ""
     
@@ -150,7 +148,7 @@ function Deploy-DiagnosticSettingsPolicies {
                 #     }
                 # }
                 
-                Write-Host ("`t" + $diagnosticSettingsType + " Policy") -ForegroundColor Cyan
+                Write-Host ("    Management Group: " + $managementGroup.Name) -ForegroundColor Cyan
                 try {
                     Write-Host "`tEvaluating if Policy exists." -ForegroundColor Gray
                     $definition = Get-AzPolicyDefinition -Name $displayName -ManagementGroupName $managementGroup.Name -ErrorAction Stop
@@ -193,7 +191,6 @@ function Deploy-DiagnosticSettingsPolicies {
                     try {
                         $assignment = New-AzPolicyAssignment -Name $nameGUID -DisplayName ($displayName + "-Assignment") -Location 'eastus' -Scope $managementGroup.Id -PolicyDefinition $definition -PolicyParameterObject $policyParameters -AssignIdentity
                         Write-Host ("`t`tAssigned Azure Policy: " + $nameGUID + "/ " + ($displayName + "-Assignment") + " to management group: " + $managementGroup.Name) -ForegroundColor Green
-                        $boolAttemptPermission = $true
     
                     }
                     catch {
@@ -202,7 +199,7 @@ function Deploy-DiagnosticSettingsPolicies {
                 }
 
                 if ($assignment){
-                    Write-Host "`tEvaluating if Role \'Monitoring Contributor\' Permissions Exist." -ForegroundColor Gray
+                    Write-Host "`tEvaluating if Role 'Monitoring Contributor' Permissions Exist." -ForegroundColor Gray
                     
                     $role1DefinitionId = [GUID]($definition.properties.policyRule.then.details.roleDefinitionIds[0] -split "/")[4]
                     $role2DefinitionId = [GUID]($definition.properties.policyRule.then.details.roleDefinitionIds[1] -split "/")[4]
@@ -212,27 +209,27 @@ function Deploy-DiagnosticSettingsPolicies {
                         $role = Get-AzRoleAssignment -scope $managementGroup.id -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop
                     }
                     catch {
-                        Write-Host "`tCreating \'Monitoring Contributor\' Role." -ForegroundColor White
+                        Write-Host "`tCreating 'Monitoring Contributor' Role." -ForegroundColor White
                     }
 
                     if(!$role){
                         try {            
                             Start-Sleep -s 3           
                             $role = New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop             
-                            Write-Host ("`t`tAssigned Role Permissions for Account: \'Monitoring Contributor\'") -ForegroundColor Green       
+                            Write-Host ("`t`tAssigned Role Permissions for Account: 'Monitoring Contributor'") -ForegroundColor Green       
                         }
                         catch {
                             try {
                                 Start-Sleep -s 8
                                 $role = New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop
-                                Write-Host ("`t`tAssigned Role Permissions for Account: \'Monitoring Contributor\'") -ForegroundColor Green
+                                Write-Host ("`t`tAssigned Role Permissions for Account: 'Monitoring Contributor'") -ForegroundColor Green
                             }
                             catch {
-                                Write-Warning ("`t`tFailed to assign Role Permissions for Account: \'Monitoring Contributor\'. Manually correct via Azure Portal")
+                                Write-Warning ("`t`tFailed to assign Role Permissions for Account: 'Monitoring Contributor'. Manually correct via Azure Portal")
                             }
                         }
                     } else {
-                        Write-Host "`t`t\'Monitoring Contributor\' Role exists." -ForegroundColor Green
+                        Write-Host "`t`t'Monitoring Contributor' Role exists." -ForegroundColor Green
                     }
     
                     
@@ -242,33 +239,33 @@ function Deploy-DiagnosticSettingsPolicies {
                         $roleName = "Storage Account Contributor"
                     }
 
-                    Write-Host "`tEvaluating if Role \'$roleName\' Permissions Exist." -ForegroundColor Gray
+                    Write-Host "`tEvaluating if Role '$roleName' Permissions Exist." -ForegroundColor Gray
                     
                     try {
                         $role = Get-AzRoleAssignment -scope $managementGroup.id -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
                     }
                     catch {
-                        Write-Host "`tCreating \'$roleName\ Role." -ForegroundColor White
+                        Write-Host "`tCreating '$roleName' Role." -ForegroundColor White
                     }
                     
                     if(!$role){
                         try {       
                             Start-Sleep -s 1                 
                             $null = New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
-                            Write-Host ("`t`tAssigned Role Permissions for Account: " + $roleName) -ForegroundColor Green
+                            Write-Host ("`t`tAssigned Role Permissions for Account: $roleName'") -ForegroundColor Green
                         }
                         catch {
                             try {       
                                 Start-Sleep -s 1                 
                                 $null = New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
-                                Write-Host ("`t`tAssigned Role Permissions for Account: " + $roleName) -ForegroundColor Green
+                                Write-Host ("`t`tAssigned Role Permissions for Account: $roleName'") -ForegroundColor Green
                             }
                             catch {
-                                Write-Warning ("`t`tFailed to assign Role Permissions for Account: " + $roleName + ". Manually correct via Azure Portal")
+                                Write-Warning ("`t`tFailed to assign Role Permissions for Account: '" + $roleName + "'. Manually correct via Azure Portal")
                             }
                         }
                     } else {
-                        Write-Host "`t`t\'$roleName\ Role exists." -ForegroundColor Green
+                        Write-Host "`t`t'$roleName' Role exists." -ForegroundColor Green
                     }
                 }
             }
@@ -436,16 +433,6 @@ foreach ($managementGroupName in $userInputManagementGroupName){
 
     }
 }
-
-$boolDiagnsoticSettingsSelected = $false
-
-$greenCheck = @{
-    Object = [Char]8730
-    ForegroundColor = 'Green'
-    NoNewLine = $true
-    }
-
-$boolAddOption = $false
 
 $boolDeployLogAnalyticWorkspaceSettings = $false
 $boolDeployStorageAccountSettings = $false
@@ -618,13 +605,11 @@ if ($boolDeployStorageAccountSettings){
 
 
 if ($boolDeployLogAnalyticWorkspaceSettings ){
-
     Deploy-DiagnosticSettingsPolicies "logAnalyticWorkspace" 
 }
 
 
 if ($boolDeployStorageAccountSettings){
-
     Deploy-DiagnosticSettingsPolicies "storageAccount"
 }
 
