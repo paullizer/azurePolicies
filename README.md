@@ -1,7 +1,17 @@
-# Customized Azure Policies
-Flexibility to deploy Azure Policies outside the Dev Ops process.
+# PowerShell Deployed Azure Policies
+Flexibility to deploy Azure Policies outside the Dev Ops process or the Enterprise Scale process.
 
-This initial configuration of Diagnostic Settings policies is a modification of the Enterprise Scale Diagnostic Settings. The Enterprise Scale policies only deploy Log Analytic Workspace configuration for Diagnostic Settings. This set of Diagnostic Settings policies also configure Diagnostic Settings to archive logs and metrics to a Storage Account.
+The Enterprise Scale policies only deploy Log Analytic Workspace configuration for Diagnostic Settings. This set of Diagnostic Settings policies also configure Diagnostic Settings to archive logs and metrics to a Storage Account.
+
+## Goals
+- Deploy all Enterprise Scale Policies via PowerShell to any user defined management group(S)
+- Deploy customized policies via PowerShell to any user defined management group(s)
+
+## Policies Currently Supported
+1. Diagnostic Settings
+   1. Log Analytic Workspace (same as Enterprise Scale)
+   2. Storage Account
+   3. Event Hub (coming soon)
 
 ## Requirements
 1. Tenant with at least one management group.
