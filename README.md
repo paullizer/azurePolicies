@@ -39,6 +39,7 @@ The Enterprise Scale policies only deploy Log Analytic Workspace configuration f
 4. Create an Initiative and assign using Initiative
 
 ## Execution
+### Diagnsotic Settings Policy Types
 Deploy-DiagnosticSettings.ps1
 
 ## Screen Shots
