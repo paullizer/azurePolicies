@@ -223,7 +223,7 @@ function Deploy-DiagnosticSettingsPolicies {
                         }
                         catch {
                             try {
-                                Start-Sleep -s 10
+                                Start-Sleep -s 15
                                 $role = New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop
                                 Write-Host ("`t`tAssigned Role Permissions for Account: 'Monitoring Contributor'") -ForegroundColor Green
                             }
@@ -253,13 +253,13 @@ function Deploy-DiagnosticSettingsPolicies {
                     
                     if(!$role){
                         try {       
-                            Start-Sleep -s 1             
+                            Start-Sleep -s 1          
                             $null = New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
                             Write-Host ("`t`tAssigned Role Permissions for Account: $roleName'") -ForegroundColor Green
                         }
                         catch {
                             try {       
-                                Start-Sleep -s 10              
+                                Start-Sleep -s 15            
                                 $null = New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
                                 Write-Host ("`t`tAssigned Role Permissions for Account: $roleName'") -ForegroundColor Green
                             }
