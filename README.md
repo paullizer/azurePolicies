@@ -23,7 +23,7 @@ This initial configuration of Diagnostic Settings policies is a modification of 
 9. Applies Role Permissions for each Policy assignment
 
 ## Future Updates
-1. Create Remediation Task for each Assignment
+1. Create Remediation Task for each Assignments
 2. Include new set of policies for sending logs and metrics to Event Hub
 3. Expand beyond diagnostic settings
 4. Create an Initiative and assign using Initiative
