@@ -285,7 +285,7 @@ Write-Host "`nThis process will deploy Azure Policies that enable the delivery o
 
 Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
 
-$policyTotal = 58
+$policyTotal = 1
 
 
 Write-Host "`nValidating Azure PowerShell is installed`n"
