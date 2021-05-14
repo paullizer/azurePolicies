@@ -1,10 +1,6 @@
 
 Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
 
-$policyTotal = 59
-
-$boolDeploy2Subscription = $false
-
 function Write-Color([String[]]$Text, [ConsoleColor[]]$Color = "White", [int]$StartTab = 0, [int] $LinesBefore = 0,[int] $LinesAfter = 0, [string] $LogFile = "", $TimeFormat = "yyyy-MM-dd HH:mm:ss") {
     # version 0.2
     # - added logging to file
@@ -537,6 +533,8 @@ function Deploy-SubscriptionPolicies {
         }
     }
 }
+
+$policyTotal = 59
 
 Clear-Host
 
