@@ -4,8 +4,10 @@ Flexibility to deploy Azure Policies outside the Dev Ops process or the Enterpri
 The Enterprise Scale policies only deploy Log Analytic Workspace configuration for Diagnostic Settings. This set of Diagnostic Settings policies also configure Diagnostic Settings to archive logs and metrics to a Storage Account.
 
 ## Goals
-- Deploy all Enterprise Scale Policies via PowerShell to any user defined management group(S)
-- Deploy customized policies via PowerShell to any user defined:
+- Deploy all _Enterprise Scale Policies_ via PowerShell to:
+   - Management group(s) 
+   - Subscription(s)
+- Deploy _customized policies_ via PowerShell to:
    - Management group(s) 
    - Subscription(s)
 
