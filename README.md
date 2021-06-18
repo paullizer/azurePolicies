@@ -5,7 +5,9 @@ The Enterprise Scale policies only deploy Log Analytic Workspace configuration f
 
 ## Goals
 - Deploy all Enterprise Scale Policies via PowerShell to any user defined management group(S)
-- Deploy customized policies via PowerShell to any user defined management group(s)
+- Deploy customized policies via PowerShell to any user defined:
+   - Management group(s) 
+   - Subscription(s)
 
 ## Policies Currently Supported
 1. Diagnostic Settings
@@ -15,7 +17,7 @@ The Enterprise Scale policies only deploy Log Analytic Workspace configuration f
 
 ## Requirements
 1. Tenant with at least one management group.
-2. User has contributor or higher permissions to the management group.
+2. User has contributor or higher permissions to the management group or subscription
 3. Log Analytic Workspace for that use case
 4. Storage Account for that use case
 
@@ -24,13 +26,15 @@ The Enterprise Scale policies only deploy Log Analytic Workspace configuration f
    1. Installs if missing
 2. Validates Azure Tenant connection
    1. Connects if not connected and sets to user provided Tenant Id
-3. Requests Management Group(s) selection
-4. User selects which diagnostic settings type to deploy (LAW, SA, or both)
-5. If selected, requests Log Analytic Workspace name for sending logs to the LAW
-6. If selected, requests Storage Account name for archiving logs to the SA
-7. Creates 58 Policy Definition per management group per diagnostic settings  type (LAW and/or SA)
-8. Assigns each Policy Definitions per management group
-9. Applies Role Permissions for each Policy assignment
+3. Requests which location to deploy policies (management groups and/or subscriptions)
+4. Requests Management Group(s) selection
+5. Requests Subscriptions(s) selection
+6. User selects which diagnostic settings type to deploy (LAW, SA, or both)
+7. If selected, requests Log Analytic Workspace name for sending logs to the LAW
+8. If selected, requests Storage Account name for archiving logs to the SA
+9. Creates 58 Policy Definition per management group per diagnostic settings  type (LAW and/or SA)
+10. Assigns each Policy Definitions per management group and/or subscription
+11. Applies Role Permissions for each Policy assignment
 
 ## Future Updates
 1. Create Remediation Task for each Assignments
