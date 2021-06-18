@@ -231,7 +231,7 @@ function Deploy-ManagementGroupPolicies {
                                 Write-Host ("`t`tAssigned Role Permissions for Account: 'Monitoring Contributor'") -ForegroundColor Green
                             }
                             catch {
-                                Write-Warning ("`t`tFailed to assign Role Permissions for Account: 'Monitoring Contributor'. Manually correct via Azure Portal")
+                                Write-Warning ("Failed to assign Role Permissions for Account: 'Monitoring Contributor'. Manually correct via Azure Portal")
                             }
                         }
                     } else {
@@ -267,7 +267,7 @@ function Deploy-ManagementGroupPolicies {
                                 Write-Host ("`t`tAssigned Role Permissions for Account: $roleName'") -ForegroundColor Green
                             }
                             catch {
-                                Write-Warning ("`t`tFailed to assign Role Permissions for Account: '" + $roleName + "'. Manually correct via Azure Portal")
+                                Write-Warning ("Failed to assign Role Permissions for Account: '" + $roleName + "'. Manually correct via Azure Portal")
                             }
                         }
                     } else {
@@ -464,7 +464,7 @@ function Deploy-SubscriptionPolicies {
                     $objectID = [GUID]($assignment.Identity.principalId)
                     
                     try {
-                        $role = Get-AzRoleAssignment -scope $subscriptionObject.id -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop
+                        $role = Get-AzRoleAssignment -scope "/subscriptions/$($subscriptionObject.Id)" -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop
                     }
                     catch {
                         Write-Host "`tCreating 'Monitoring Contributor' Role." -ForegroundColor White
@@ -473,21 +473,21 @@ function Deploy-SubscriptionPolicies {
                     if(!$role){
                         try {            
                             Start-Sleep -s 3           
-                            $role = New-AzRoleAssignment -Scope $subscriptionObject.Id -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop             
+                            $role = New-AzRoleAssignment -Scope "/subscriptions/$($subscriptionObject.Id)" -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop             
                             Write-Host ("`t`tAssigned Role Permissions for Account: 'Monitoring Contributor'") -ForegroundColor Green       
                         }
                         catch {
                             try {
                                 Start-Sleep -s 15
-                                $role = New-AzRoleAssignment -Scope $subscriptionObject.Id -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop
+                                $role = New-AzRoleAssignment -Scope "/subscriptions/$($subscriptionObject.Id)" -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop
                                 Write-Host ("`t`tAssigned Role Permissions for Account: 'Monitoring Contributor'") -ForegroundColor Green
                             }
                             catch {
-                                Write-Warning ("`t`tFailed to assign Role Permissions for Account: 'Monitoring Contributor'. Manually correct via Azure Portal")
+                                Write-Warning ("Failed to assign Role Permissions for Account: 'Monitoring Contributor'. Manually correct via Azure Portal")
                             }
                         }
                     } else {
-                        Write-Host "`t`t'Monitoring Contributor' Role exists." -ForegroundColor Green
+                        Write-Host ("`t`t'Monitoring Contributor' Role exists.") -ForegroundColor Green
                     }
     
                     
@@ -500,26 +500,26 @@ function Deploy-SubscriptionPolicies {
                     Write-Host "`tEvaluating if Role '$roleName' Permissions Exist." -ForegroundColor Gray
                     
                     try {
-                        $role = Get-AzRoleAssignment -scope $subscriptionObject.id -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
+                        $role = Get-AzRoleAssignment -scope "/subscriptions/$($subscriptionObject.Id)" -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
                     }
                     catch {
-                        Write-Host "`tCreating '$roleName' Role." -ForegroundColor White
+                        Write-Host ("`tCreating '$roleName' Role.") -ForegroundColor White
                     }
                     
                     if(!$role){
                         try {       
                             Start-Sleep -s 1          
-                            $null = New-AzRoleAssignment -Scope $subscriptionObject.Id -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
+                            $null = New-AzRoleAssignment -Scope "/subscriptions/$($subscriptionObject.Id)" -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
                             Write-Host ("`t`tAssigned Role Permissions for Account: $roleName'") -ForegroundColor Green
                         }
                         catch {
                             try {       
                                 Start-Sleep -s 15            
-                                $null = New-AzRoleAssignment -Scope $subscriptionObject.Id -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
+                                $null = New-AzRoleAssignment -Scope "/subscriptions/$($subscriptionObject.Id)" -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
                                 Write-Host ("`t`tAssigned Role Permissions for Account: $roleName'") -ForegroundColor Green
                             }
                             catch {
-                                Write-Warning ("`t`tFailed to assign Role Permissions for Account: '" + $roleName + "'. Manually correct via Azure Portal")
+                                Write-Warning ("Failed to assign Role Permissions for Account: '" + $roleName + "'. Manually correct via Azure Portal")
                             }
                         }
                     } else {
