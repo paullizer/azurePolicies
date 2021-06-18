@@ -1,6 +1,8 @@
 
 Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
+$policyTotal = 59
 
+###------------Functions ---------------
 function Write-Color([String[]]$Text, [ConsoleColor[]]$Color = "White", [int]$StartTab = 0, [int] $LinesBefore = 0,[int] $LinesAfter = 0, [string] $LogFile = "", $TimeFormat = "yyyy-MM-dd HH:mm:ss") {
     # version 0.2
     # - added logging to file
@@ -11,16 +13,40 @@ function Write-Color([String[]]$Text, [ConsoleColor[]]$Color = "White", [int]$St
     # - TimeFormat https://msdn.microsoft.com/en-us/library/8kb3ddd4.aspx
 
     $DefaultColor = $Color[0]
-    if ($LinesBefore -ne 0) {  for ($i = 0; $i -lt $LinesBefore; $i++) { Write-Host "`n" -NoNewline } } # Add empty line before
-    if ($StartTab -ne 0) {  for ($i = 0; $i -lt $StartTab; $i++) { Write-Host "`t" -NoNewLine } }  # Add TABS before text
-    if ($Color.Count -ge $Text.Count) {
-        for ($i = 0; $i -lt $Text.Length; $i++) { Write-Host $Text[$i] -ForegroundColor $Color[$i] -NoNewLine } 
-    } else {
-        for ($i = 0; $i -lt $Color.Length ; $i++) { Write-Host $Text[$i] -ForegroundColor $Color[$i] -NoNewLine }
-        for ($i = $Color.Length; $i -lt $Text.Length; $i++) { Write-Host $Text[$i] -ForegroundColor $DefaultColor -NoNewLine }
+
+    if ($LinesBefore -ne 0) {  
+        for ($i = 0; $i -lt $LinesBefore; $i++) { 
+            Write-Host "`n" -NoNewline 
+        } 
     }
+
+    if ($StartTab -ne 0) {  
+        for ($i = 0; $i -lt $StartTab; $i++) { 
+            Write-Host "`t" -NoNewLine 
+        } 
+    }
+
+    if ($Color.Count -ge $Text.Count) {
+        for ($i = 0; $i -lt $Text.Length; $i++) { 
+            Write-Host $Text[$i] -ForegroundColor $Color[$i] -NoNewLine 
+        } 
+    } else {
+        for ($i = 0; $i -lt $Color.Length ; $i++) { 
+            Write-Host $Text[$i] -ForegroundColor $Color[$i] -NoNewLine 
+        }
+        for ($i = $Color.Length; $i -lt $Text.Length; $i++) { 
+            Write-Host $Text[$i] -ForegroundColor $DefaultColor -NoNewLine 
+        }
+    }
+
     Write-Host
-    if ($LinesAfter -ne 0) {  for ($i = 0; $i -lt $LinesAfter; $i++) { Write-Host "`n" } }  # Add empty line after
+
+    if ($LinesAfter -ne 0) {  
+        for ($i = 0; $i -lt $LinesAfter; $i++) { 
+            Write-Host "`n" 
+        } 
+    }
+
     if ($LogFile -ne "") {
         $TextToFile = ""
         for ($i = 0; $i -lt $Text.Length; $i++) {
@@ -31,7 +57,6 @@ function Write-Color([String[]]$Text, [ConsoleColor[]]$Color = "White", [int]$St
 }
 
 function Deploy-ManagementGroupPolicies {
-
     param (
         [Parameter(Mandatory=$true)]
         [string]$diagnosticSettingsType
@@ -42,14 +67,14 @@ function Deploy-ManagementGroupPolicies {
         $jsonWeb = Invoke-WebRequest ("https://github.com/paullizer/azurePolicies")
         Write-Host "`tConnected to Github.com" -ForegroundColor Green
     }
-    catch{
+    catch {
         Write-Warning "Failed to connect to Github.com. Please validate access to internet and run process again."
         Break Script
     }
     
     for ($x = 1; $x -le $policyTotal; $x++){
         Write-Host ("`nProcessing $diagnosticSettingsType policy: " + $x + ".json") -ForegroundColor DarkCyan
-    
+
         $jsonPath = ("https://raw.githubusercontent.com/paullizer/azurePolicies/main/diagnosticSettings/" + $diagnosticSettingsType + "/" + $x +".json")
     
         try {
@@ -58,27 +83,23 @@ function Deploy-ManagementGroupPolicies {
         catch{
             Write-Warning "Failed to pull policy from Github.com. Waiting 5 seconds to attempt one more time."
             Start-Sleep -s 5
-    
             $jsonWeb = Invoke-WebRequest $jsonPath
         }
     
         $jsonObject = $jsonWeb.Content | ConvertFrom-Json
     
         if ($jsonObject){
-    
             try {
                 $resourceType = ($jsonObject.policyRule.if.equals).split(".")[($jsonObject.policyRule.if.equals).split(".").count-1]
             }
             catch {
                 try {
                     $subResourceType = "-" + $jsonObject.policyRule.then.details.deployment.properties.template.resources.properties.logs[0].category.substring(0,10)
-
                     $resourceType = ($jsonObject.policyRule.if.allof[0].equals).split(".")[($jsonObject.policyRule.if.allof[0].equals).split(".").count-1]
-
                     $resourceType += $subResourceType
                 }
                 catch {
-
+                    Write-Warning "Failed to get resourceType from Json Object"
                 }
             }
     
@@ -87,7 +108,7 @@ function Deploy-ManagementGroupPolicies {
                 $purposeType = $purposeType.split("/")[1]
             }
             catch {
-    
+                Write-Warning "Failed to get purposeType from Json Object"
             }
             
             if ($diagnosticSettingsType -eq "logAnalyticWorkspace"){
@@ -104,7 +125,7 @@ function Deploy-ManagementGroupPolicies {
                 }
             }
             catch {
-    
+                Write-Warning "Failed to add value to displayName"
             }
     
             try {
@@ -113,7 +134,7 @@ function Deploy-ManagementGroupPolicies {
                 }
             }
             catch {
-                
+                Write-Warning "Failed to remove '-' from displayname"
             }
     
             try {
@@ -122,15 +143,13 @@ function Deploy-ManagementGroupPolicies {
                 }
             }
             catch {
-                
+                Write-Warning "Failed to reduce displayName to less than 63 characters"
             }
     
             $policy = $jsonObject.PolicyRule | ConvertTo-Json -Depth 64
-    
             $parameters = $jsonObject.Parameters | ConvertTo-Json -Depth 64
     
             foreach ($managementGroup in $managementGroups){
-    
                 $boolCreatePolicy = $false
                 $definition = ""
                 $assignment = ""
@@ -283,7 +302,6 @@ function Deploy-ManagementGroupPolicies {
 }
 
 function Deploy-SubscriptionPolicies {
-
     param (
         [Parameter(Mandatory=$true)]
         [string]$diagnosticSettingsType
@@ -317,20 +335,17 @@ function Deploy-SubscriptionPolicies {
         $jsonObject = $jsonWeb.Content | ConvertFrom-Json
     
         if ($jsonObject){
-    
             try {
                 $resourceType = ($jsonObject.policyRule.if.equals).split(".")[($jsonObject.policyRule.if.equals).split(".").count-1]
             }
             catch {
                 try {
                     $subResourceType = "-" + $jsonObject.policyRule.then.details.deployment.properties.template.resources.properties.logs[0].category.substring(0,10)
-
                     $resourceType = ($jsonObject.policyRule.if.allof[0].equals).split(".")[($jsonObject.policyRule.if.allof[0].equals).split(".").count-1]
-
                     $resourceType += $subResourceType
                 }
                 catch {
-
+                    Write-Warning "Failed to get resourceType from Json Object"
                 }
             }
     
@@ -339,7 +354,7 @@ function Deploy-SubscriptionPolicies {
                 $purposeType = $purposeType.split("/")[1]
             }
             catch {
-    
+                Write-Warning "Failed to get purposeType from Json Object"
             }
             
             if ($diagnosticSettingsType -eq "logAnalyticWorkspace"){
@@ -356,7 +371,7 @@ function Deploy-SubscriptionPolicies {
                 }
             }
             catch {
-    
+                Write-Warning "Failed to add value to displayName"
             }
     
             try {
@@ -365,7 +380,7 @@ function Deploy-SubscriptionPolicies {
                 }
             }
             catch {
-                
+                Write-Warning "Failed to remove '-' from displayname"
             }
     
             try {
@@ -374,7 +389,7 @@ function Deploy-SubscriptionPolicies {
                 }
             }
             catch {
-                
+                Write-Warning "Failed to reduce displayName to less than 63 characters"
             }
     
             $policy = $jsonObject.PolicyRule | ConvertTo-Json -Depth 64
@@ -534,19 +549,20 @@ function Deploy-SubscriptionPolicies {
     }
 }
 
-$policyTotal = 59
+###------------Execution ---------------
 
 Clear-Host
 
 Write-Host "`nThis process will deploy Azure Policies that enable the delivery of diagnostic settings to a Log Analytic Workspace and archive them to a Storage Account.`n" -ForegroundColor Cyan
-
 Write-Host "`nValidating Azure PowerShell is installed`n"
 
 try{
     $azureModuleObjects = Get-Module -ListAvailable -Name Az.*
+
     if (!$azureModuleObjects){
         Write-Warning "Azure PowerShell is not installed."
         Write-Host "Checking for elevated permissions..."
+
         if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(`
             [Security.Principal.WindowsBuiltInRole] "Administrator")) {
             Write-Warning "Insufficient permissions to install Azure PowerShell Module. Open the PowerShell console as an administrator and run this script again."
@@ -563,6 +579,7 @@ try{
 catch {
     Write-Warning "`tAzure PowerShell is not installed."
     Write-Host "`tChecking for elevated permissions..."
+
     if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(`
         [Security.Principal.WindowsBuiltInRole] "Administrator")) {
         Write-Warning "`tInsufficient permissions to install Azure PowerShell Module. Open the PowerShell console as an administrator and run this script again."
@@ -582,7 +599,6 @@ catch {
     Write-Warning "Not connected to Azure Account. Attempting connection, please following Browser Prompts."
 }
 
-
 if (!$azContext){
     try {
         Connect-AzAccount
@@ -593,15 +609,16 @@ if (!$azContext){
     }
 }
 else {
-
     $boolTryAgain = $false
     $boolAccountFound = $false
-    while (!$boolAccountFound) {
 
+    while (!$boolAccountFound) {
         Write-Host ("Connected to Accounts: `n") -ForegroundColor Gray
+
         foreach ($az in $azContext){
             Write-Host ("`t`t" + $az.name.split("(")[0] + ", " + $az.Account.Id)
         }
+
         $userInputTryAgain = Read-Host ("`n`tDo you want to connect to any additional accounts? [Y or Yes, N or No]")
 
         switch ($userInputTryAgain.ToLower()) {
@@ -627,11 +644,10 @@ else {
 }
 
 
-
 $boolTryAgain = $true
 $boolTenantFound = $false
-while (!$boolTenantFound) {
 
+while (!$boolTenantFound) {
     if ($boolTryAgain){
         $userInputTenantId = Read-Host "`nPlease enter Tenant Id"
     }
@@ -642,7 +658,7 @@ while (!$boolTenantFound) {
         $boolTenantFound = $true
     } else {
         Write-Warning "Unable to find Tenant, please enter valid name or confirm your access to resource."
-            
+    
         $userInputTryAgain = Read-Host "Do you want to try again? [Y or Yes, N or No]"
 
         switch ($userInputTryAgain.ToLower()) {
@@ -672,16 +688,11 @@ if ($azContext.Tenant.Id -ne $tenant.Id){
     }
 }
 
-
 Write-Host ("`tConnected to " + $tenant.name + " with Tenant ID " + $tenant.Id) -ForegroundColor Green
-
 
 $boolDeploy2Subscription = $false
 $boolDeploy2ManagementGroup = $false
-
-do
- {
-
+do {
     Write-Color "`n-------------------", " Policy Deployment Location Selection ", "-------------------" -Color Gray, White, Gray
 
     if ($boolDeploy2Subscription){
@@ -701,7 +712,6 @@ do
     } else {
         if ($boolDeploy2Subscription -or $boolDeploy2ManagementGroup){
             Write-Color "3.  ", "Press ", "'3'", " or", " 'D(d)'", " to Complete Policy Deployment Location Selection." -Color Gray, White, Cyan, White, Cyan, White -LinesBefore 1
-
             $userInput = Read-Host "`nPlease select a menu option:"
         } else {
             $userInput = Read-Host "`nPlease select a location to deploy the policies:"
@@ -748,9 +758,9 @@ do
 }
 until (($userInput -eq '3') -or ($userInput.ToLower() -eq 'd'))
 
+
 [System.Collections.ArrayList]$userInputSubscriptionId = @()
 [System.Collections.ArrayList]$subscriptionObjects = @()
-
 $boolTryAgain = $true
 
 if ($boolDeploy2Subscription){
@@ -759,6 +769,7 @@ if ($boolDeploy2Subscription){
         if ($boolTryAgain){
             $userInputSubscriptionId.Add((Read-Host "`nPlease enter Subscription Id")) | Out-Null
         }
+
         $userInputAddAnotherSub = Read-Host "`tDo you want to enter another Subscription? [Y or Yes, N or No]"
 
         switch ($userInputAddAnotherSub.ToLower()) {
@@ -783,9 +794,7 @@ if ($boolDeploy2Subscription){
         }
     }
 
-
     foreach ($subscriptionId in $userInputSubscriptionId){
-
         try{
             $subscriptionObject = Get-AzSubscription -SubscriptionId $subscriptionId
         }
@@ -796,33 +805,30 @@ if ($boolDeploy2Subscription){
 
         if ($subscriptionObject){
             $subscriptionObjects.Add($subscriptionObject) | Out-Null
-        } else {
-
         }
     }
 }
 
 [System.Collections.ArrayList]$userInputManagementGroupName = @()
 [System.Collections.ArrayList]$managementGroups = @()
-
 $boolTryAgain = $true
 
 if ($boolDeploy2ManagementGroup){
     $boolMoreManagementGroups = $true
+
     while ($boolMoreManagementGroups) {
         if ($boolTryAgain){
             $userInputManagementGroupName.Add((Read-Host "`nPlease enter Management Group")) | Out-Null
         }
+
         $userInputAddAnotherMG = Read-Host "`tDo you want to enter another Management Group? [Y or Yes, N or No]"
 
         switch ($userInputAddAnotherMG.ToLower()) {
             "n" { 
                 $boolMoreManagementGroups = $false
-
             }
             "no" { 
                 $boolMoreManagementGroups = $false 
-
             }
             "y" {  
                 $boolTryAgain = $true
@@ -848,8 +854,6 @@ if ($boolDeploy2ManagementGroup){
 
         if ($managementGroupObject){
             $managementGroups.Add($managementGroupObject) | Out-Null
-        } else {
-
         }
     }
 }
@@ -858,9 +862,7 @@ $boolDeployLogAnalyticWorkspaceSettings = $false
 $boolDeployStorageAccountSettings = $false
 #$boolDeployEventHubSettings = $false
 
-do
- {
-
+do {
     Write-Color "`n-------------------", " Diagnostic Policy Selection ", "-------------------" -Color Gray, White, Gray
 
     if ($boolDeployLogAnalyticWorkspaceSettings){
@@ -886,7 +888,6 @@ do
     } else {
         if ($boolDeployLogAnalyticWorkspaceSettings -or $boolDeployStorageAccountSettings){
             Write-Color "4.  ", "Press ", "'4'", " or", " 'D(d)'", " to Complete Policy Selection" -Color Gray, White, Cyan, White, Cyan, White -LinesBefore 1
-
             $userInput = Read-Host "`nPlease select a menu option:"
         } else {
             $userInput = Read-Host "`nPlease select a policy to deploy:"
@@ -936,11 +937,10 @@ until (($userInput -eq '4') -or ($userInput.ToLower() -eq 'd'))
 $boolCorrectUserInput = $true
 
 while ($boolCorrectUserInput) {
-    
+    $userInputPrepend = Read-Host "`nEnter characters to prepend Azure Policy Display name [1-4 characters, e.g. 0001, TEST, or 11AB; NO special characters]"
+
     $array = @('~', '!', '@', '#', '$', '%', '^', '&', '\(', '\)', '-', '.+', '=', '}', '{', '\\', '/', '|', ';', ',', ':', '<', '>', '\?', '"', '\*')
     $boolContainsSpecial = $false
-
-    $userInputPrepend = Read-Host "`nEnter characters to prepend Azure Policy Display name [1-4 characters, e.g. 0001, TEST, or 11AB; NO special characters]"
 
     switch ($userInputPrepend.Length) {
         {1..4 -contains $_} { 
@@ -967,8 +967,8 @@ while ($boolCorrectUserInput) {
 }
 
 if ($boolDeployLogAnalyticWorkspaceSettings ){
-
     $boolLAWFound = $false
+
     while (!$boolLAWFound) {
         $userInputLAWName = Read-Host "`nPlease enter Log Analytics Workspace Name"
 
@@ -989,25 +989,19 @@ if ($boolDeployLogAnalyticWorkspaceSettings ){
     }
 }
 
-
-
 if ($boolDeployStorageAccountSettings){
-
     $boolSAFound = $false
+
     while (!$boolSAFound) {
-
         $userInputSAName = Read-Host "`nPlease enter Storage Account Name"
-
         $storageAccountObject = Get-AzResource -name $userInputSAName
         $storageAccountResourceId = $storageAccountObject.ResourceId
-
 
         if ($storageAccountObject){
             $boolSAFound = $true
         }
         else {
             Write-Warning "Unable to find Storage Account, please enter valid name or confirm your access to resource."
-
             $userInputTryAgain = Read-Host "`tDo you want to try again? [Y or Yes, N or No]"
 
             if (($userInputTryAgain.ToLower() -eq "n") -or ($userInputTryAgain.ToLower() -eq "no")){
@@ -1016,7 +1010,6 @@ if ($boolDeployStorageAccountSettings){
         }
     }
 }
-
 
 if ($boolDeployLogAnalyticWorkspaceSettings ){
     if ($boolDeploy2Subscription){
@@ -1028,7 +1021,6 @@ if ($boolDeployLogAnalyticWorkspaceSettings ){
     }
 }
 
-
 if ($boolDeployStorageAccountSettings){
     if ($boolDeploy2Subscription){
         Deploy-SubscriptionPolicies "storageAccount" 
@@ -1038,8 +1030,6 @@ if ($boolDeployStorageAccountSettings){
         Deploy-ManagementGroupPolicies "storageAccount"
     }
 }
-
-
 
 Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "false"
 
