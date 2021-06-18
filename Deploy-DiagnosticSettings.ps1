@@ -33,7 +33,7 @@ function Write-Color([String[]]$Text, [ConsoleColor[]]$Color = "White", [int]$St
 function Deploy-ManagementGroupPolicies {
 
     param (
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$true)]
         [string]$diagnosticSettingsType
     )
 
@@ -285,7 +285,7 @@ function Deploy-ManagementGroupPolicies {
 function Deploy-SubscriptionPolicies {
 
     param (
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$true)]
         [string]$diagnosticSettingsType
     )
 
@@ -447,7 +447,7 @@ function Deploy-SubscriptionPolicies {
                 }
                 else {
                     try {
-                        $assignment = New-AzPolicyAssignment -Name $nameGUID -DisplayName ($displayName + "-Assignment") -Location 'eastus' -Scope $subscriptionObject.Id -PolicyDefinition $definition -PolicyParameterObject $policyParameters -AssignIdentity
+                        $assignment = New-AzPolicyAssignment -Name $nameGUID -DisplayName ($displayName + "-Assignment") -Location 'eastus' -Scope "/subscriptions/$($subscriptionObject.Id)" -PolicyDefinition $definition -PolicyParameterObject $policyParameters -AssignIdentity
                         Write-Host ("`t`tAssigned Azure Policy: " + $nameGUID + "/ " + ($displayName + "-Assignment") + " to subscription: " + $subscriptionObject.Name) -ForegroundColor Green
     
                     }
@@ -576,11 +576,12 @@ catch {
 }
 
 try {
-    $azContext = Get-AzContext
+    $azContext = Get-AzContext -ListAvailable
 }
 catch {
     Write-Warning "Not connected to Azure Account. Attempting connection, please following Browser Prompts."
 }
+
 
 if (!$azContext){
     try {
@@ -591,13 +592,48 @@ if (!$azContext){
         Break Script
     }
 }
+else {
+
+    $boolTryAgain = $false
+    $boolAccountFound = $false
+    while (!$boolAccountFound) {
+
+        Write-Host ("Connected to Accounts: `n") -ForegroundColor Gray
+        foreach ($az in $azContext){
+            Write-Host ("`t`t" + $az.name.split("(")[0] + ", " + $az.Account.Id)
+        }
+        $userInputTryAgain = Read-Host ("`n`tDo you want to connect to any additional accounts? [Y or Yes, N or No]")
+
+        switch ($userInputTryAgain.ToLower()) {
+            "n" {
+                $boolAccountFound = $true
+            }
+            "no" { 
+                $boolAccountFound = $true
+            }
+            "y" { $boolTryAgain = $true }
+            "yes" { $boolTryAgain = $true }
+            Default { 
+                Write-Warning "Incorrect value. Please enter [Y or Yes, N or No]" 
+                $boolTryAgain = $false
+            }
+        }
+
+        if ($boolTryAgain){
+            Connect-AzAccount
+            $azContext = Get-AzContext -ListAvailable
+        }  
+    }
+}
+
+
 
 $boolTryAgain = $true
 $boolTenantFound = $false
 while (!$boolTenantFound) {
 
     if ($boolTryAgain){
-        $userInputTenantId = Read-Host "Please enter Tenant Id"
+        $userInputTenantId = Read-Host "`nPlease enter Tenant Id"
     }
 
     $tenant = Get-AzTenant $userInputTenantId
@@ -628,13 +664,14 @@ while (!$boolTenantFound) {
 
 if ($azContext.Tenant.Id -ne $tenant.Id){
     try {
-        Set-AzContext -TenantId $tenant.Id
+        Set-AzContext -TenantId $tenant.Id | Out-Null
     }
     catch {
         Write-Warning "Unable to set Azure Context. Please verify access to context. Existing process."
         Break Script
     }
 }
+
 
 Write-Host ("`tConnected to " + $tenant.name + " with Tenant ID " + $tenant.Id) -ForegroundColor Green
 
@@ -746,9 +783,11 @@ if ($boolDeploy2Subscription){
         }
     }
 
+
     foreach ($subscriptionId in $userInputSubscriptionId){
+
         try{
-            $subscriptionObject = Get-AzSubscription $subscriptionId
+            $subscriptionObject = Get-AzSubscription -SubscriptionId $subscriptionId
         }
         catch {
             Write-Warning "Unable to collect Subscription information. Please verify access to internet and permissions to resource. Exiting process."
@@ -981,7 +1020,7 @@ if ($boolDeployStorageAccountSettings){
 
 if ($boolDeployLogAnalyticWorkspaceSettings ){
     if ($boolDeploy2Subscription){
-        Deploy-SubscriptionPolicies - "logAnalyticWorkspace" 
+        Deploy-SubscriptionPolicies "logAnalyticWorkspace" 
     }
 
     if ($boolDeploy2ManagementGroup){
