@@ -48,7 +48,7 @@ Deploy-DiagnosticSettings.ps1
 
 ## Screen Shots
 ### Example of the deployment process
-![image](https://user-images.githubusercontent.com/34814295/112682854-1325d200-8e47-11eb-9372-2cbc565d18eb.png)
+![2021-06-18_8-15-47](https://user-images.githubusercontent.com/34814295/122560611-ca795180-d00e-11eb-95af-d5b0e8e1cba4.png)
 
 ### Example of the Policy Definition viewed in Azure Portal
 ![image](https://user-images.githubusercontent.com/34814295/112238093-5c450e80-8c1a-11eb-95e9-3672ed3311b6.png)
@@ -59,5 +59,4 @@ Deploy-DiagnosticSettings.ps1
 ### Example of the Policy in Action
 Each diagnostic settings type is deployed on its own, the name of the setting is based on the Policy Assignment Id to simplify troubleshooting and tracking
 ![image](https://user-images.githubusercontent.com/34814295/112683012-554f1380-8e47-11eb-83b7-56303d035fa5.png)
-
 
