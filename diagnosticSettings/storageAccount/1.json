@@ -9,7 +9,8 @@
           "effect": "[parameters('effect')]",
           "details": {
             "type": "Microsoft.Insights/diagnosticSettings",
-            "existenceCondition": [
+            "existenceCondition": {
+              "allOf": [
                 {
                   "field": "Microsoft.Insights/diagnosticSettings/logs.enabled",
                   "equals": "true"
@@ -22,7 +23,8 @@
                   "field": "Microsoft.Insights/diagnosticSettings/storageAccountId",
                   "equals": "[parameters('storageAccount')]"
                 }
-              ],
+              ]
+            },
             "name": "setByPolicy",
             "roleDefinitionIds": [
               "/providers/microsoft.authorization/roleDefinitions/749f88d5-cbae-40b8-bcfc-e573ddc772fa",
