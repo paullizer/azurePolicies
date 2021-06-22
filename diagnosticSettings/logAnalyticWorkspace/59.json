@@ -28,7 +28,6 @@
             ]
           },
           "deployment": {
-            "location": "northeurope",
             "properties": {
               "mode": "incremental",
               "template": {

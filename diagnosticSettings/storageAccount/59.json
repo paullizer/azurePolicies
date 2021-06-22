@@ -22,20 +22,22 @@
                 "equals": "true"
               },
               {
-                "field": "Microsoft.Insights/diagnosticSettings/workspaceId",
-                "equals": "[parameters('logAnalytics')]"
+                "field": "Microsoft.Insights/diagnosticSettings/storageAccountId",
+                "equals": "[parameters('storageAccount')]"
               }
             ]
           },
           "deployment": {
-            "location": "northeurope",
             "properties": {
               "mode": "incremental",
               "template": {
                 "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
                 "contentVersion": "1.0.0.0",
                 "parameters": {
-                  "logAnalytics": {
+                  "profileName": {
+                    "type": "string"
+                  },
+                  "storageAccount": {
                     "type": "string"
                   },
                   "logsEnabled": {
@@ -91,8 +93,11 @@
                 "outputs": {}
               },
               "parameters": {
-                "logAnalytics": {
-                  "value": "[parameters('logAnalytics')]"
+                "profileName": {
+                  "value": "[parameters('profileName')]"
+                },
+                "storageAccount": {
+                  "value": "[parameters('storageAccount')]"
                 },
                 "logsEnabled": {
                   "value": "[parameters('logsEnabled')]"
@@ -108,12 +113,20 @@
       }
     },
     "parameters": {
-      "logAnalytics": {
+      "profileName": {
         "type": "String",
         "metadata": {
-          "displayName": "Primary Log Analytics workspace",
-          "description": "Select Log Analytics workspace from dropdown list. If this workspace is outside of the scope of the assignment you must manually grant 'Log Analytics Contributor' permissions (or similar) to the policy assignment's principal ID.",
-          "strongType": "omsWorkspace"
+          "displayName": "Profile name",
+          "description": "The diagnostic settings profile name"
+        },
+        "defaultValue": "setbypolicy"
+      },
+      "storageAccount": {
+        "type": "String",
+        "metadata": {
+          "displayName": "Storage Account",
+          "description": "Select Storage Account from dropdown list.",
+          "strongType": "Microsoft.Storage/storageAccounts"
         }
       },
       "effect": {
