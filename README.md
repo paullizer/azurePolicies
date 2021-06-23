@@ -18,34 +18,38 @@ The Enterprise Scale policies only deploy Log Analytic Workspace configuration f
    3. Event Hub (coming soon)
 
 ## Requirements
-1. Tenant with at least one management group.
-2. User has contributor or higher permissions to the management group or subscription
-3. Log Analytic Workspace for that use case
-4. Storage Account for that use case
+1. Tenant with at least one management group or subscription.
+2. User has contributor or higher permissions to the management group or subscription.
+3. Log Analytic Workspace for that use case.
+4. Storage Account for that use case.
 
 ## Process
-1. Validates Azure PowerShell module installation
-   1. Installs if missing
-2. Validates Azure Tenant connection
-   1. Connects if not connected and sets to user provided Tenant Id
-3. Requests which location to deploy policies (management groups and/or subscriptions)
-4. Requests Management Group(s) selection
-5. Requests Subscriptions(s) selection
-6. User selects which diagnostic settings type to deploy (LAW, SA, or both)
-7. If selected, requests Log Analytic Workspace name for sending logs to the LAW
-8. If selected, requests Storage Account name for archiving logs to the SA
-9. Creates 58 Policy Definition per management group per diagnostic settings  type (LAW and/or SA)
-10. Assigns each Policy Definitions per management group and/or subscription
-11. Applies Role Permissions for each Policy assignment
+1. Validates Azure PowerShell module installation.
+   1. Installs if missing.
+2. Validates Azure Tenant connection.
+   1. If not connected, connects to user provided Tenant Id.
+3. Requests which location to deploy policies (management groups and/or subscriptions).
+4. Requests Management Group(s) selection.
+5. Requests Subscriptions(s) selection.
+6. User selects which diagnostic settings type to deploy (LAW, SA, or both).
+7. Validates Microsot.PolicyInsights resource provider is registered.
+   1. If not registered, registers Microsot.PolicyInsights.
+8. Validates Microsot.OperationalInsights resource provider is registered.
+   1. If not registered, registers Microsot.OperationalInsights.
+9. If selected, requests Log Analytic Workspace name for sending logs to the LAW.
+10. If selected, requests Storage Account name for archiving logs to the SA.
+11. Creates 59 Policy Definition per management group per diagnostic settings  type (LAW and/or SA).
+12. Assigns each Policy Definitions per management group and/or subscription.
+13. Applies Role Permissions for each Policy assignment.
+14. Creates Remediation Task for each Policy assignment.
 
 ## Future Updates
-1. Create Remediation Task for each Assignments
-2. Include new set of policies for sending logs and metrics to Event Hub
-3. Expand beyond diagnostic settings
-4. Create an Initiative and assign using Initiative
+1. Include new set of policies for sending logs and metrics to Event Hub.
+3. Create an Initiative and assign using Initiative.
+3. Expand beyond diagnostic settings.
 
 ## Execution
-### Diagnsotic Settings Policy Types
+### Diagnostic Settings Policy Types
 Deploy-DiagnosticSettings.ps1
 
 ## Screen Shots
