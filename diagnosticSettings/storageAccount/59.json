@@ -28,6 +28,7 @@
             ]
           },
           "deployment": {
+            "location": "useast",
             "properties": {
               "mode": "incremental",
               "template": {
