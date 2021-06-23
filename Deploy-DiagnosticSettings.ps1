@@ -59,7 +59,9 @@ function Write-Color([String[]]$Text, [ConsoleColor[]]$Color = "White", [int]$St
 function Deploy-ManagementGroupPolicies {
     param (
         [Parameter(Mandatory=$true)]
-        [string]$diagnosticSettingsType
+        [string]$diagnosticSettingsType,
+        [Parameter(Mandatory=$true)]
+        $managementGroup
     )
 
     try {
@@ -73,7 +75,7 @@ function Deploy-ManagementGroupPolicies {
     }
     
     for ($x = 1; $x -le $policyTotal; $x++){
-        Write-Host ("`nProcessing $diagnosticSettingsType policy: " + $x + ".json") -ForegroundColor DarkCyan
+        Write-Host ("`nProcessing $diagnosticSettingsType policy: " + $x + ".json") -ForegroundColor Magenta
 
         $jsonPath = ("https://raw.githubusercontent.com/paullizer/azurePolicies/main/diagnosticSettings/" + $diagnosticSettingsType + "/" + $x +".json")
     
@@ -149,7 +151,6 @@ function Deploy-ManagementGroupPolicies {
             $policy = $jsonObject.PolicyRule | ConvertTo-Json -Depth 64
             $parameters = $jsonObject.Parameters | ConvertTo-Json -Depth 64
     
-            foreach ($managementGroup in $managementGroups){
                 $boolCreatePolicy = $false
                 $definition = ""
                 $assignment = ""
@@ -159,21 +160,22 @@ function Deploy-ManagementGroupPolicies {
                 if ($diagnosticSettingsType -eq "logAnalyticWorkspace"){
                     $policyParameters = @{
                         'logAnalytics' = $logAnalyticWorkspaceResourceId
-                        'profileName' = ("setbyPolicy_" + $nameGUID)
+                        'profileName' = ("setbyPolicy_" + $userInputPrepend)
                     }
                 } elseif ($diagnosticSettingsType -eq "storageAccount"){
                     $policyParameters = @{
                         'storageAccount' = $storageAccountResourceId
-                        'profileName' = ("setbyPolicy_" + $nameGUID)
+                        'profileName' = ("setbyPolicy_" + $userInputPrepend)
                     }
                 } # elseif ($diagnosticSettingsType -eq "eventHub"){
                 #     $policyParameters = @{
                 #         'eventHub' = $storageAccountResourceId
-                #         'profileName' = ("setbyPolicy_" + $nameGUID)
+                #         'profileName' = ("setbyPolicy_" + $userInputPrepend)
                 #     }
                 # }
                 
                 Write-Host ("    Management Group: " + $managementGroup.Name) -ForegroundColor Cyan
+                Write-Host ("      Policy: " + $displayName) -ForegroundColor DarkCyan
                 try {
                     Write-Host "`tEvaluating if Policy exists." -ForegroundColor Gray
                     $definition = Get-AzPolicyDefinition -Name $displayName -ManagementGroupName $managementGroup.Name -ErrorAction Stop
@@ -292,8 +294,31 @@ function Deploy-ManagementGroupPolicies {
                     } else {
                         Write-Host "`t`t'$roleName' Role exists." -ForegroundColor Green
                     }
+
+                    $remediation = ""
+
+                    try {
+                        Write-Host "`tEvaluating if Remediation Task exists." -ForegroundColor Gray
+                        $remediation = Get-AzPolicyRemediation -Name ("Remediate-" + $displayName) -ManagementGroupName $managementGroup.Name -ErrorAction Stop
+                    }
+                    catch {
+                        Write-Host ("`t`tCreating Remediation Task: Remediate-" + $displayName) -ForegroundColor White
+                    }
+
+                    if($remediation){
+                        Write-Host ("`t`tRemediation Task exists.") -ForegroundColor Green
+                    }
+                    else {
+                        try {
+                            $remediation = Start-AzPolicyRemediation -Name ("Remediate-" + $displayName) -ManagementGroupName $managementGroup.Name -PolicyAssignmentId $assignment.PolicyAssignmentId
+                            Write-Host ("`t`tCreated Remediation Task: Remediate " + $displayName) -ForegroundColor Gree
+        
+                        }
+                        catch {
+                            Write-Warning ("Failed to create remediation task. Manually create task via Azure Portal")
+                        }
+                    }
                 }
-            }
         } else {
             Write-Warning "Failed to collect policy from Github.com after two attempts. Validate access to internet and to github.com. Process will review where it left off and will resume when restarted. Exiting process."
             Break Script
@@ -304,7 +329,9 @@ function Deploy-ManagementGroupPolicies {
 function Deploy-SubscriptionPolicies {
     param (
         [Parameter(Mandatory=$true)]
-        [string]$diagnosticSettingsType
+        [string]$diagnosticSettingsType,
+        [Parameter(Mandatory=$true)]
+        $subscriptionObject
     )
 
     try {
@@ -318,7 +345,7 @@ function Deploy-SubscriptionPolicies {
     }
     
     for ($x = 1; $x -le $policyTotal; $x++){
-        Write-Host ("`nProcessing $diagnosticSettingsType policy: " + $x + ".json") -ForegroundColor DarkCyan
+        Write-Host ("`nProcessing $diagnosticSettingsType policy: " + $x + ".json") -ForegroundColor Magenta
     
         $jsonPath = ("https://raw.githubusercontent.com/paullizer/azurePolicies/main/diagnosticSettings/" + $diagnosticSettingsType + "/" + $x +".json")
     
@@ -396,152 +423,176 @@ function Deploy-SubscriptionPolicies {
     
             $parameters = $jsonObject.Parameters | ConvertTo-Json -Depth 64
     
-            foreach ($subscriptionObject in $subscriptionObjects){
-    
-                $boolCreatePolicy = $false
-                $definition = ""
-                $assignment = ""
-    
-                $nameGUID = (new-guid).toString().replace("-","").substring(0,23)
-                
-                if ($diagnosticSettingsType -eq "logAnalyticWorkspace"){
-                    $policyParameters = @{
-                        'logAnalytics' = $logAnalyticWorkspaceResourceId
-                        'profileName' = ("setbyPolicy_" + $nameGUID)
-                    }
-                } elseif ($diagnosticSettingsType -eq "storageAccount"){
-                    $policyParameters = @{
-                        'storageAccount' = $storageAccountResourceId
-                        'profileName' = ("setbyPolicy_" + $nameGUID)
-                    }
-                } # elseif ($diagnosticSettingsType -eq "eventHub"){
-                #     $policyParameters = @{
-                #         'eventHub' = $storageAccountResourceId
-                #         'profileName' = ("setbyPolicy_" + $nameGUID)
-                #     }
-                # }
-                
-                Write-Host ("    Subscription: " + $subscriptionObject.Name) -ForegroundColor Cyan
+            $boolCreatePolicy = $false
+            $definition = ""
+            $assignment = ""
+
+            $nameGUID = (new-guid).toString().replace("-","").substring(0,23)
+            
+            if ($diagnosticSettingsType -eq "logAnalyticWorkspace"){
+                $policyParameters = @{
+                    'logAnalytics' = $logAnalyticWorkspaceResourceId
+                    'profileName' = ("setbyPolicy_" + $userInputPrepend)
+                }
+            } elseif ($diagnosticSettingsType -eq "storageAccount"){
+                $policyParameters = @{
+                    'storageAccount' = $storageAccountResourceId
+                    'profileName' = ("setbyPolicy_" + $userInputPrepend)
+                }
+            } # elseif ($diagnosticSettingsType -eq "eventHub"){
+            #     $policyParameters = @{
+            #         'eventHub' = $storageAccountResourceId
+            #         'profileName' = ("setbyPolicy_" + $userInputPrepend)
+            #     }
+            # }
+            
+            try {
+                Write-Host "`tEvaluating if Policy exists." -ForegroundColor Gray
+                $definition = Get-AzPolicyDefinition -Name $displayName -SubscriptionId $subscriptionObject.Id -ErrorAction Stop
+            }
+            catch {
+                $boolCreatePolicy = $true
+            }
+
+            if ($definition){
+                Write-Host "`t`tPolicy exists. Moving to assignment task." -ForegroundColor Green
+            }
+            else {
+                $boolCreatePolicy = $true
+            }
+
+            if ($boolCreatePolicy){
+                Write-Host "`t`tCreating Policy." -ForegroundColor White
                 try {
-                    Write-Host "`tEvaluating if Policy exists." -ForegroundColor Gray
-                    $definition = Get-AzPolicyDefinition -Name $displayName -SubscriptionId $subscriptionObject.Id -ErrorAction Stop
+                    $definition = New-AzPolicyDefinition -Name $displayName -Policy $policy -Parameter $parameters -SubscriptionId $subscriptionObject.Id  -ErrorAction Stop
+                    Write-Host ("`t`tCreated Azure Policy: " + $displayName + ", for subscription: " + $subscriptionObject.Name) -ForegroundColor Green
                 }
                 catch {
-                    $boolCreatePolicy = $true
+                    Write-Host ($_.Exception)
+                    pause
+                    Write-Warning ("Failed to create policy. Exiting process.")
+                    #Break Script
                 }
-    
-                if ($definition){
-                    Write-Host "`t`tPolicy exists. Moving to assignment task." -ForegroundColor Green
-                }
-                else {
-                    $boolCreatePolicy = $true
-                }
-    
-                if ($boolCreatePolicy){
-                    Write-Host "`tCreating Policy." -ForegroundColor White
-                    try {
-                        $definition = New-AzPolicyDefinition -Name $displayName -Policy $policy -Parameter $parameters -SubscriptionId $subscriptionObject.Id  -ErrorAction Stop
-                        Write-Host ("`t`tCreated Azure Policy: " + $displayName + ", for subscription: " + $subscriptionObject.Name) -ForegroundColor Green
-                    }
-                    catch {
-                        Write-Warning "Failed to create policy. Exiting process."
-                        Break Script
-                    }
-                }
-    
+            }
+
+            try {
+                Write-Host "`tEvaluating if Policy Assignment exists." -ForegroundColor Gray
+                $assignment = Get-AzPolicyAssignment -Scope "/subscriptions/$($subscriptionObject.Id)" -PolicyDefinitionId $definition.PolicyDefinitionId -ErrorAction Stop
+                    
+            }
+            catch {
+                Write-Host "`tCreating Policy Assignment." -ForegroundColor White
+            }
+
+            if($assignment){
+                Write-Host "`t`tPolicy Assignment exists." -ForegroundColor Green
+            }
+            else {
                 try {
-                    Write-Host "`tEvaluating if Policy Assignment exists." -ForegroundColor Gray
-                    $assignment = Get-AzPolicyAssignment -PolicyDefinitionId $definition.PolicyDefinitionId -Scope $subscriptionObject.Id -ErrorAction Stop
+                    $assignment = New-AzPolicyAssignment -Name $nameGUID -DisplayName ($displayName + "-Assignment") -Location 'eastus' -Scope "/subscriptions/$($subscriptionObject.Id)" -PolicyDefinition $definition -PolicyParameterObject $policyParameters -AssignIdentity
+                    Write-Host ("`t`tAssigned Azure Policy: " + $nameGUID + "/ " + ($displayName + "-Assignment") + " to subscription: " + $subscriptionObject.Name) -ForegroundColor Green
+
                 }
                 catch {
-                    Write-Host "`tCreating Policy Assignment." -ForegroundColor White
+                    Write-Warning ("Failed to Assign Azure Policy: " + $nameGUID + "/ " + ($displayName + "-Assignment") + " to subscription: " + $subscriptionObject.Name)
                 }
-    
-                if($assignment){
-                    Write-Host "`t`tPolicy Assignment exists." -ForegroundColor Green
+            }
+
+            if ($assignment){
+                Write-Host "`tEvaluating if Role 'Monitoring Contributor' Permissions Exist." -ForegroundColor Gray
+                
+                $role1DefinitionId = [GUID]($definition.properties.policyRule.then.details.roleDefinitionIds[0] -split "/")[4]
+                $role2DefinitionId = [GUID]($definition.properties.policyRule.then.details.roleDefinitionIds[1] -split "/")[4]
+                $objectID = [GUID]($assignment.Identity.principalId)
+                
+                try {
+                    $role = Get-AzRoleAssignment -scope "/subscriptions/$($subscriptionObject.Id)" -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop
                 }
-                else {
-                    try {
-                        $assignment = New-AzPolicyAssignment -Name $nameGUID -DisplayName ($displayName + "-Assignment") -Location 'eastus' -Scope "/subscriptions/$($subscriptionObject.Id)" -PolicyDefinition $definition -PolicyParameterObject $policyParameters -AssignIdentity
-                        Write-Host ("`t`tAssigned Azure Policy: " + $nameGUID + "/ " + ($displayName + "-Assignment") + " to subscription: " + $subscriptionObject.Name) -ForegroundColor Green
-    
-                    }
-                    catch {
-                        Write-Warning ("Failed to Assign Azure Policy: " + $nameGUID + "/ " + ($displayName + "-Assignment") + " to subscription: " + $subscriptionObject.Name)
-                    }
+                catch {
+                    Write-Host "`tCreating 'Monitoring Contributor' Role." -ForegroundColor White
                 }
 
-                if ($assignment){
-                    Write-Host "`tEvaluating if Role 'Monitoring Contributor' Permissions Exist." -ForegroundColor Gray
-                    
-                    $role1DefinitionId = [GUID]($definition.properties.policyRule.then.details.roleDefinitionIds[0] -split "/")[4]
-                    $role2DefinitionId = [GUID]($definition.properties.policyRule.then.details.roleDefinitionIds[1] -split "/")[4]
-                    $objectID = [GUID]($assignment.Identity.principalId)
-                    
-                    try {
-                        $role = Get-AzRoleAssignment -scope "/subscriptions/$($subscriptionObject.Id)" -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop
+                if(!$role){
+                    try {            
+                        Start-Sleep -s 3           
+                        $role = New-AzRoleAssignment -Scope "/subscriptions/$($subscriptionObject.Id)" -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop             
+                        Write-Host ("`t`tAssigned Role Permissions for Account: 'Monitoring Contributor'") -ForegroundColor Green       
                     }
                     catch {
-                        Write-Host "`tCreating 'Monitoring Contributor' Role." -ForegroundColor White
-                    }
-
-                    if(!$role){
-                        try {            
-                            Start-Sleep -s 3           
-                            $role = New-AzRoleAssignment -Scope "/subscriptions/$($subscriptionObject.Id)" -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop             
-                            Write-Host ("`t`tAssigned Role Permissions for Account: 'Monitoring Contributor'") -ForegroundColor Green       
+                        try {
+                            Start-Sleep -s 15
+                            $role = New-AzRoleAssignment -Scope "/subscriptions/$($subscriptionObject.Id)" -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop
+                            Write-Host ("`t`tAssigned Role Permissions for Account: 'Monitoring Contributor'") -ForegroundColor Green
                         }
                         catch {
-                            try {
-                                Start-Sleep -s 15
-                                $role = New-AzRoleAssignment -Scope "/subscriptions/$($subscriptionObject.Id)" -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop
-                                Write-Host ("`t`tAssigned Role Permissions for Account: 'Monitoring Contributor'") -ForegroundColor Green
-                            }
-                            catch {
-                                Write-Warning ("Failed to assign Role Permissions for Account: 'Monitoring Contributor'. Manually correct via Azure Portal")
-                            }
+                            Write-Warning ("Failed to assign Role Permissions for Account: 'Monitoring Contributor'. Manually correct via Azure Portal")
                         }
-                    } else {
-                        Write-Host ("`t`t'Monitoring Contributor' Role exists.") -ForegroundColor Green
                     }
-    
-                    
-                    if ($diagnosticSettingsType -eq "logAnalyticWorkspace"){
-                        $roleName = "Log Analytics Contributor"
-                    } elseif ($diagnosticSettingsType -eq "storageAccount") {
-                        $roleName = "Storage Account Contributor"
-                    }
+                } else {
+                    Write-Host ("`t`t'Monitoring Contributor' Role exists.") -ForegroundColor Green
+                }
 
-                    Write-Host "`tEvaluating if Role '$roleName' Permissions Exist." -ForegroundColor Gray
-                    
-                    try {
-                        $role = Get-AzRoleAssignment -scope "/subscriptions/$($subscriptionObject.Id)" -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
+                
+                if ($diagnosticSettingsType -eq "logAnalyticWorkspace"){
+                    $roleName = "Log Analytics Contributor"
+                } elseif ($diagnosticSettingsType -eq "storageAccount") {
+                    $roleName = "Storage Account Contributor"
+                }
+
+                Write-Host "`tEvaluating if Role '$roleName' Permissions Exist." -ForegroundColor Gray
+                
+                try {
+                    $role = Get-AzRoleAssignment -scope "/subscriptions/$($subscriptionObject.Id)" -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
+                }
+                catch {
+                    Write-Host ("`tCreating '$roleName' Role.") -ForegroundColor White
+                }
+                
+                if(!$role){
+                    try {       
+                        Start-Sleep -s 1          
+                        $null = New-AzRoleAssignment -Scope "/subscriptions/$($subscriptionObject.Id)" -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
+                        Write-Host ("`t`tAssigned Role Permissions for Account: $roleName'") -ForegroundColor Green
                     }
                     catch {
-                        Write-Host ("`tCreating '$roleName' Role.") -ForegroundColor White
-                    }
-                    
-                    if(!$role){
                         try {       
-                            Start-Sleep -s 1          
+                            Start-Sleep -s 15            
                             $null = New-AzRoleAssignment -Scope "/subscriptions/$($subscriptionObject.Id)" -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
                             Write-Host ("`t`tAssigned Role Permissions for Account: $roleName'") -ForegroundColor Green
                         }
                         catch {
-                            try {       
-                                Start-Sleep -s 15            
-                                $null = New-AzRoleAssignment -Scope "/subscriptions/$($subscriptionObject.Id)" -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
-                                Write-Host ("`t`tAssigned Role Permissions for Account: $roleName'") -ForegroundColor Green
-                            }
-                            catch {
-                                Write-Warning ("Failed to assign Role Permissions for Account: '" + $roleName + "'. Manually correct via Azure Portal")
-                            }
+                            Write-Warning ("Failed to assign Role Permissions for Account: '" + $roleName + "'. Manually correct via Azure Portal")
                         }
-                    } else {
-                        Write-Host "`t`t'$roleName' Role exists." -ForegroundColor Green
+                    }
+                } else {
+                    Write-Host "`t`t'$roleName' Role exists." -ForegroundColor Green
+                }
+
+                $remediation = ""
+                
+                try {
+                    Write-Host "`tEvaluating if Remediation Task exists." -ForegroundColor Gray
+                    $remediation = Get-AzPolicyRemediation -Name ("Remediate-" + $displayName) -ErrorAction Stop
+                }
+                catch {
+                    Write-Host ("`t`tCreating Remediation Task: Remediate-" + $displayName) -ForegroundColor White
+                }
+
+                if($remediation){
+                    Write-Host ("`t`tRemediation Task exists.") -ForegroundColor Green
+                }
+                else {
+                    try {
+                        $remediation = Start-AzPolicyRemediation -PolicyAssignmentId $assignment.PolicyAssignmentId -Name ("Remediate-" + $displayName)
+                        Write-Host ("`t`tCreated Remediation Task: Remediate " + $displayName) -ForegroundColor Gree
+    
+                    }
+                    catch {
+                        Write-Warning ("Failed to create remediation task. Manually create task via Azure Portal")
                     }
                 }
             }
+            
         } else {
             Write-Warning "Failed to collect policy from Github.com after two attempts. Validate access to internet and to github.com. Process will review where it left off and will resume when restarted. Exiting process."
             Break Script
@@ -796,7 +847,7 @@ if ($boolDeploy2Subscription){
 
     foreach ($subscriptionId in $userInputSubscriptionId){
         try{
-            $subscriptionObject = Get-AzSubscription -SubscriptionId $subscriptionId
+            $subscriptionObject = Get-AzSubscription -SubscriptionId $subscriptionId -ErrorAction Stop
         }
         catch {
             Write-Warning "Unable to collect Subscription information. Please verify access to internet and permissions to resource. Exiting process."
@@ -818,7 +869,7 @@ if ($boolDeploy2ManagementGroup){
 
     while ($boolMoreManagementGroups) {
         if ($boolTryAgain){
-            $userInputManagementGroupName.Add((Read-Host "`nPlease enter Management Group")) | Out-Null
+            $userInputManagementGroupName.Add((Read-Host "`nPlease enter Management Group Id")) | Out-Null
         }
 
         $userInputAddAnotherMG = Read-Host "`tDo you want to enter another Management Group? [Y or Yes, N or No]"
@@ -953,7 +1004,7 @@ while ($boolCorrectUserInput) {
             }
 
             if (!$boolContainsSpecial){
-                Write-Host "`tAzure Policies will start with '$userInputPrepend'" -ForegroundColor Green
+                Write-Host "`tAzure Policies will start with '$userInputPrepend'`n" -ForegroundColor Green
                 $boolCorrectUserInput = $false
             }
         }
@@ -967,16 +1018,49 @@ while ($boolCorrectUserInput) {
 }
 
 if ($boolDeployLogAnalyticWorkspaceSettings ){
+    $subs = Get-AzSubscription -TenantId $tenant.Id
     $boolLAWFound = $false
 
     while (!$boolLAWFound) {
         $userInputLAWName = Read-Host "`nPlease enter Log Analytics Workspace Name"
 
-        $logAnalyticWorkspaceObject = Get-AzResource -name $userInputLAWName
-        $logAnalyticWorkspaceResourceId = $logAnalyticWorkspaceObject.ResourceId
+        for ($x = 0; $x -lt $subs.count; $x++){
+
+            if(!$boolLAWFound){
+                Write-Host ("`tSubscription: " + $subs[$x].Name) -ForegroundColor Cyan
+
+                try {
+                    #Write-Host "`tSelecting Subscription." -ForegroundColor White
+                    Select-AzSubscription -Subscription $subs[$x].Name | Out-Null
+                    #Write-Host "`t`tSubscription selected." -ForegroundColor Green
+                }
+                catch {
+                    Write-Warning "Failed to select Subscription. Exiting process."
+                    Break Script
+        
+                }
+
+                try {
+                    Write-Host "`tSearching..." -ForegroundColor White
+                    $logAnalyticWorkspaceObject = Get-AzResource -name $userInputLAWName -ErrorAction Stop
+                }
+                catch {
+                    
+                }
+
+                if ($logAnalyticWorkspaceObject){
+                    Write-Host "`t`tFound." -ForegroundColor Green
+                    $x = $subs.count
+                    $boolLAWFound = $true
+                }
+                else {
+                    Write-Host "`t`tDid not find. Moving to next subscription." -ForegroundColor White
+                }
+            }
+        }
 
         if ($logAnalyticWorkspaceObject){
-            $boolLAWFound = $true
+            $logAnalyticWorkspaceResourceId = $logAnalyticWorkspaceObject.ResourceId
         } else {
             Write-Warning "Unable to find Log Analytics Workspace, please enter valid name or confirm your access to resource."
 
@@ -989,19 +1073,54 @@ if ($boolDeployLogAnalyticWorkspaceSettings ){
     }
 }
 
+
 if ($boolDeployStorageAccountSettings){
-    $boolSAFound = $false
+    $subs = Get-AzSubscription -TenantId $tenant.Id
+    $boolLAWFound = $false
 
     while (!$boolSAFound) {
         $userInputSAName = Read-Host "`nPlease enter Storage Account Name"
-        $storageAccountObject = Get-AzResource -name $userInputSAName
-        $storageAccountResourceId = $storageAccountObject.ResourceId
+
+        for ($x = 0; $x -lt $subs.count; $x++){
+
+            if(!$boolSAFound){
+                Write-Host ("`tSubscription: " + $subs[$x].Name) -ForegroundColor Cyan
+
+                try {
+                    #Write-Host "`tSelecting Subscription." -ForegroundColor White
+                    Select-AzSubscription -Subscription $subs[$x].Name | Out-Null
+                    #Write-Host "`t`tSubscription selected." -ForegroundColor Green
+                }
+                catch {
+                    Write-Warning "Failed to select Subscription. Exiting process."
+                    Break Script
+        
+                }
+
+                try {
+                    Write-Host "`tSearching..." -ForegroundColor White
+                    $storageAccountObject = Get-AzResource -name $userInputSAName -ErrorAction Stop
+                }
+                catch {
+                    
+                }
+
+                if ($storageAccountObject){
+                    Write-Host "`t`tFound." -ForegroundColor Green
+                    $x = $subs.count
+                    $boolSAFound = $true
+                }
+                else {
+                    Write-Host "`t`tDid not find. Moving to next subscription." -ForegroundColor White
+                }
+            }
+        }
 
         if ($storageAccountObject){
-            $boolSAFound = $true
-        }
-        else {
+            $storageAccountResourceId = $storageAccountObject.ResourceId
+        } else {
             Write-Warning "Unable to find Storage Account, please enter valid name or confirm your access to resource."
+
             $userInputTryAgain = Read-Host "`tDo you want to try again? [Y or Yes, N or No]"
 
             if (($userInputTryAgain.ToLower() -eq "n") -or ($userInputTryAgain.ToLower() -eq "no")){
@@ -1011,23 +1130,124 @@ if ($boolDeployStorageAccountSettings){
     }
 }
 
+if ($boolDeploy2Subscription){
+    foreach ($subscriptionObject in $subscriptionObjects){
+        try {
+            Write-Host "`nEvalauting if Resource Provider Microsot.PolicyInsights is Registered." -ForegroundColor Gray
+            $policyInsights = Get-AzResourceProvider -ProviderNamespace "Microsoft.PolicyInsights" -ErrorAction Stop
+        }
+        catch {
+            Write-Warning "Failed to collect Resource Provider status. Exiting process."
+            Break Script
+        }
+
+        if ($policyInsights){
+            foreach ($pi in $policyInsights) {
+                if ($pi.RegistrationState -eq "NotRegistered"){
+                    try {
+                        Write-Host "`tMicrosot.PolicyInsights is NOT Registered. Attempting to Register." -ForegroundColor White
+                        Register-AzResourceProvider -ProviderNamespace "Microsoft.PolicyInsights" | Out-Null
+                        Write-Host "`t`tRegistered Microsot.PolicyInsights" -ForegroundColor Green
+                        Break
+                    }
+                    catch {
+                        Write-Warning "Failed to register Microsot.PolicyInsights. Exiting process."
+                        Break Script
+                    }
+                }
+
+                if ($pi.RegistrationState -eq "Registered"){
+                    Write-Host "`tMicrosot.PolicyInsights is registered." -ForegroundColor White
+                    Break
+                }
+            }
+        }
+
+        try {
+            Write-Host "`nEvalauting if Resource Provider Microsoft.OperationalInsights is Registered." -ForegroundColor Gray
+            $operationalInsights = Get-AzResourceProvider -ProviderNamespace "Microsoft.OperationalInsights" -ErrorAction Stop
+        }
+        catch {
+            Write-Warning "Failed to collect Resource Provider status. Exiting process."
+            Break Script
+        }
+
+        if ($operationalInsights){
+            foreach ($oi in $operationalInsights) {
+                if ($oi.RegistrationState -eq "NotRegistered"){
+                    try {
+                        Write-Host "`tMicrosot.OperationalInsights is NOT Registered. Attempting to Register." -ForegroundColor White
+                        Register-AzResourceProvider -ProviderNamespace "Microsoft.OperationalInsights" | Out-Null
+                        Write-Host "`t`tRegistered Microsot.OperationalInsights" -ForegroundColor Green
+                        Break
+                    }
+                    catch {
+                        Write-Warning "Failed to register Microsot.OperationalInsights. Exiting process."
+                        Break Script
+                    }
+                }
+
+                if ($oi.RegistrationState -eq "Registered"){
+                    Write-Host "`tMicrosot.OperationalInsights is registered." -ForegroundColor White
+                    Break
+                }
+            }
+        }
+    }
+}
+
 if ($boolDeployLogAnalyticWorkspaceSettings ){
     if ($boolDeploy2Subscription){
-        Deploy-SubscriptionPolicies "logAnalyticWorkspace" 
+        foreach ($subscriptionObject in $subscriptionObjects){
+            Write-Host ("`nDeploying policies. " + $subscriptionObject.Name) -ForegroundColor Gray
+            Write-Host ("`tSubscription: " + $subscriptionObject.Name) -ForegroundColor Cyan
+
+            try {
+                Write-Host "`t`tSelecting Subscription." -ForegroundColor White
+                Select-AzSubscription -Subscription $subscriptionObject.Name | Out-Null
+                Write-Host "`t`t`tSubscription selected." -ForegroundColor Green
+            }
+            catch {
+                Write-Warning "Failed to select Subscription. Exiting process."
+                Break Script
+
+            }
+            Deploy-SubscriptionPolicies "logAnalyticWorkspace" $subscriptionObject
+        }
     }
 
     if ($boolDeploy2ManagementGroup){
-        Deploy-ManagementGroupPolicies "logAnalyticWorkspace" 
+        foreach ($managementGroup in $managementGroups){
+            Deploy-ManagementGroupPolicies "logAnalyticWorkspace" $managementGroup
+        }
     }
 }
 
 if ($boolDeployStorageAccountSettings){
     if ($boolDeploy2Subscription){
-        Deploy-SubscriptionPolicies "storageAccount" 
+        foreach ($subscriptionObject in $subscriptionObjects){
+            Write-Host ("`nDeploying policies. " + $subscriptionObject.Name) -ForegroundColor Gray
+            Write-Host ("`tSubscription: " + $subscriptionObject.Name) -ForegroundColor Cyan
+
+            try {
+                Write-Host "`t`tSelecting Subscription." -ForegroundColor White
+                Select-AzSubscription -Subscription $subscriptionObject.Name | Out-Null
+                Write-Host "`t`t`tSubscription selected." -ForegroundColor Green
+            }
+            catch {
+                Write-Warning "Failed to select Subscription. Exiting process."
+                Break Script
+
+            }
+
+            Deploy-SubscriptionPolicies "storageAccount" $subscriptionObject 
+        }
     }
 
     if ($boolDeploy2ManagementGroup){
-        Deploy-ManagementGroupPolicies "storageAccount"
+        foreach ($managementGroup in $managementGroups){
+            Deploy-ManagementGroupPolicies "storageAccount" $managementGroup
+        }
     }
 }
 
