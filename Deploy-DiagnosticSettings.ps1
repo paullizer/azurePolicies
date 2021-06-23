@@ -465,13 +465,13 @@ function Deploy-SubscriptionPolicies {
                 Write-Host "`t`tCreating Policy." -ForegroundColor White
                 try {
                     $definition = New-AzPolicyDefinition -Name $displayName -Policy $policy -Parameter $parameters -SubscriptionId $subscriptionObject.Id  -ErrorAction Stop
-                    Write-Host ("`t`tCreated Azure Policy: " + $displayName + ", for subscription: " + $subscriptionObject.Name) -ForegroundColor Green
+                    Write-Host ("`t`tCreated Azure Policy: " + $displayName + ", for: " + $subscriptionObject.Name) -ForegroundColor Green
                 }
                 catch {
                     Write-Host ($_.Exception)
                     pause
                     Write-Warning ("Failed to create policy. Exiting process.")
-                    #Break Script
+                    Break Script
                 }
             }
 
@@ -490,11 +490,11 @@ function Deploy-SubscriptionPolicies {
             else {
                 try {
                     $assignment = New-AzPolicyAssignment -Name $nameGUID -DisplayName ($displayName + "-Assignment") -Location 'eastus' -Scope "/subscriptions/$($subscriptionObject.Id)" -PolicyDefinition $definition -PolicyParameterObject $policyParameters -AssignIdentity
-                    Write-Host ("`t`tAssigned Azure Policy: " + $nameGUID + "/ " + ($displayName + "-Assignment") + " to subscription: " + $subscriptionObject.Name) -ForegroundColor Green
+                    Write-Host ("`t`tAssigned Azure Policy: " + $nameGUID + "/ " + ($displayName + "-Assignment")) -ForegroundColor Green
 
                 }
                 catch {
-                    Write-Warning ("Failed to Assign Azure Policy: " + $nameGUID + "/ " + ($displayName + "-Assignment") + " to subscription: " + $subscriptionObject.Name)
+                    Write-Warning ("Failed to Assign Azure Policy: " + $nameGUID + "/ " + ($displayName + "-Assignment") + " to subscription: " + $subscriptionObject.Name + ". Complete assignment in Azure Portal or run this process again.")
                 }
             }
 
@@ -513,12 +513,18 @@ function Deploy-SubscriptionPolicies {
                 }
 
                 if(!$role){
+                    $attemptAgain = $false
+
                     try {            
                         Start-Sleep -s 3           
                         $role = New-AzRoleAssignment -Scope "/subscriptions/$($subscriptionObject.Id)" -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop             
                         Write-Host ("`t`tAssigned Role Permissions for Account: 'Monitoring Contributor'") -ForegroundColor Green       
                     }
                     catch {
+                        $attemptAgain = $true
+                    }
+
+                    if ($attemptAgain){
                         try {
                             Start-Sleep -s 15
                             $role = New-AzRoleAssignment -Scope "/subscriptions/$($subscriptionObject.Id)" -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop
@@ -528,6 +534,7 @@ function Deploy-SubscriptionPolicies {
                             Write-Warning ("Failed to assign Role Permissions for Account: 'Monitoring Contributor'. Manually correct via Azure Portal")
                         }
                     }
+
                 } else {
                     Write-Host ("`t`t'Monitoring Contributor' Role exists.") -ForegroundColor Green
                 }
@@ -549,12 +556,18 @@ function Deploy-SubscriptionPolicies {
                 }
                 
                 if(!$role){
+                    $attemptAgain = $false
+
                     try {       
                         Start-Sleep -s 1          
                         $null = New-AzRoleAssignment -Scope "/subscriptions/$($subscriptionObject.Id)" -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
                         Write-Host ("`t`tAssigned Role Permissions for Account: $roleName'") -ForegroundColor Green
                     }
                     catch {
+                        $attemptAgain = $true
+                    }
+
+                    if ($attemptAgain){
                         try {       
                             Start-Sleep -s 15            
                             $null = New-AzRoleAssignment -Scope "/subscriptions/$($subscriptionObject.Id)" -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
@@ -564,6 +577,7 @@ function Deploy-SubscriptionPolicies {
                             Write-Warning ("Failed to assign Role Permissions for Account: '" + $roleName + "'. Manually correct via Azure Portal")
                         }
                     }
+
                 } else {
                     Write-Host "`t`t'$roleName' Role exists." -ForegroundColor Green
                 }
