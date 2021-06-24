@@ -43,8 +43,13 @@ The Enterprise Scale policies only deploy Log Analytic Workspace configuration f
 12. Creates 59 Policy Definition per management group per diagnostic settings  type (LAW and/or SA).
 13. Assigns each Policy Definitions per management group and/or subscription.
 14. Applies Role Permissions for each Policy assignment.
-15. Perform Compliance scan.
-16. Creates Remediation Task for each non-compliant Policy.
+    1. If Log Analytic Workspace or Storage Account is in a subscription different from where the policy is assigned
+       1. Then the script will assign an additional role with permissions to the subscription where the LAW or SA resides
+    2. If Log Analytic Workspace or Storage Account is in a management group different from where the policy is assigned
+       1. Then the script will determine if the subscription where the LAW or SA resides is in the heirarchy of where the policy is assigned
+          1. If it is not, then the script will assign an additional role with permissions to the subscription where the LAW or SA resides
+15. [Optional] Perform Compliance scan.
+16. [Optional] Creates Remediation Task for each non-compliant Policy.
 
 ## Future Updates
 1. Include new set of policies for sending logs and metrics to Event Hub.
@@ -57,9 +62,14 @@ Deploy-DiagnosticSettings.ps1
 
 ## Screen Shots
 ### Example of the deployment process
-![2021-06-18_8-15-47](https://user-images.githubusercontent.com/34814295/122560611-ca795180-d00e-11eb-95af-d5b0e8e1cba4.png)
+![2021-06-24_16-34-01](https://user-images.githubusercontent.com/34814295/123329267-a041fb00-d50a-11eb-8b39-55deb6fa1d1b.png)
+
+### Example of the Compliance Scan and Remediation Task
+
+![2021-06-24_16-35-51](https://user-images.githubusercontent.com/34814295/123329343-b2239e00-d50a-11eb-8a04-cc4156207d35.png)
 
 ### Example of the Policy Definition viewed in Azure Portal
+
 ![image](https://user-images.githubusercontent.com/34814295/112238093-5c450e80-8c1a-11eb-95e9-3672ed3311b6.png)
 
 ### Example of Policy Assignment viewed in Azure Portal
