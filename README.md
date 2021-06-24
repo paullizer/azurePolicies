@@ -19,10 +19,11 @@ The Enterprise Scale policies only deploy Log Analytic Workspace configuration f
 
 ## Requirements
 1. Tenant with at least one management group or subscription.
-2. User has contributor or higher permissions to the management group or subscription where the policy is deployed.
-3. User has contributor or higher permissions to the management group or subscription where the log analytic workspace, storage account, or event hub is deployed.
-4. Log Analytic Workspace for that use case.
-5. Storage Account for that use case.
+2. User has contributor or higher permissions to the management group or subscription:
+   1. Where the policy is deployed.
+   2. Where the log analytic workspace, storage account, or event hub is deployed.
+3. Log Analytic Workspace for that use case.
+4. Storage Account for that use case.
 
 ## Process
 1. Validates Azure PowerShell module installation.
