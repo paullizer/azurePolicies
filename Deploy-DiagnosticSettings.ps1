@@ -166,10 +166,53 @@ function Deploy-ManagementGroupPolicies {
                         'logAnalytics' = $logAnalyticWorkspaceResourceId
                         'profileName' = ("setbyPolicy_" + $userInputPrepend)
                     }
+    
+                    try {
+                        $resourceSub = Get-AzSubscription -SubscriptionId $logAnalyticWorkspaceObject.ResourceId.split("/")[2]
+                    }
+                    catch {
+    
+                    }
+
+                    try {
+                        $groupHierarchy = Get-AzManagementGroup -GroupId $managementGroup.Name -Expand -Recurse
+                    }
+                    catch {
+    
+                    }
+
+                    try {
+                        $boolFoundinHierarchy = Search-ManagementGroupMember $groupHierarchy $resourceSub
+                    }
+                    catch {
+    
+                    }
+    
                 } elseif ($diagnosticSettingsType -eq "storageAccount"){
                     $policyParameters = @{
                         'storageAccount' = $storageAccountResourceId
                         'profileName' = ("setbyPolicy_" + $userInputPrepend)
+                    }
+    
+                    try {
+                        $resourceSub = Get-AzSubscription -SubscriptionId $logAnalyticWorkspaceObject.ResourceId.split("/")[2]
+                    }
+                    catch {
+    
+                    }
+
+                    try {
+                        $groupHierarchy = Get-AzManagementGroup -GroupId $managementGroup.Name -Expand -Recurse
+                    }
+                    catch {
+    
+                    }
+
+                    try {
+                        $boolFoundinHierarchy = Search-ManagementGroupMember $groupHierarchy $resourceSub
+                    }
+                    catch {
+    
                     }
                 } # elseif ($diagnosticSettingsType -eq "eventHub"){
                 #     $policyParameters = @{
@@ -244,21 +287,50 @@ function Deploy-ManagementGroupPolicies {
                     }
 
                     if(!$role){
+                        $attemptAgain = $false
+
                         try {            
                             Start-Sleep -s 3           
-                            $role = New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop             
+                            $null = New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop             
                             Write-Host ("`t`tAssigned Role Permissions for Account: 'Monitoring Contributor'") -ForegroundColor Green       
                         }
                         catch {
+                            $attemptAgain = $true
+                        }
+
+                        if (!$boolFoundinHierarchy){
+                            try {            
+                                Start-Sleep -s 3           
+                                $null = New-AzRoleAssignment -Scope "/subscriptions/$($resourceSub.Id)" -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop             
+                                Write-Host ("`t`tAssigned Additional Role Permissions for Account: 'Monitoring Contributor'") -ForegroundColor Green       
+                            }
+                            catch {
+                                $attemptAgain = $true
+                            } 
+                        }
+
+                        if ($attemptAgain){
                             try {
                                 Start-Sleep -s 15
-                                $role = New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop
+                                $null = New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop
                                 Write-Host ("`t`tAssigned Role Permissions for Account: 'Monitoring Contributor'") -ForegroundColor Green
                             }
                             catch {
-                                Write-Warning ("Failed to assign Role Permissions for Account: 'Monitoring Contributor'. Manually correct via Azure Portal")
+                                Write-Warning ("Failed to assign Role Permissions for Account: 'Monitoring Contributor'.")
+                            }
+
+                            if (!$boolFoundinHierarchy){
+                                try {            
+                                    Start-Sleep -s 3           
+                                    $null = New-AzRoleAssignment -Scope "/subscriptions/$($resourceSub.Id)" -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop             
+                                    Write-Host ("`t`tAssigned Additional Role Permissions for Account: 'Monitoring Contributor'") -ForegroundColor Green       
+                                }
+                                catch {
+                                    Write-Warning ("Failed to assign Additional Role Permissions for Account: 'Monitoring Contributor'.")
+                                } 
                             }
                         }
+
                     } else {
                         Write-Host "`t`t'Monitoring Contributor' Role exists." -ForegroundColor Green
                     }
@@ -280,48 +352,53 @@ function Deploy-ManagementGroupPolicies {
                     }
                     
                     if(!$role){
+                        $attemptAgain = $false
+
                         try {       
                             Start-Sleep -s 1          
                             $null = New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
                             Write-Host ("`t`tAssigned Role Permissions for Account: $roleName'") -ForegroundColor Green
                         }
                         catch {
+                            $attemptAgain = $true
+                        }
+
+                        if ($boolFoundinHierarchy){
+                            try {            
+                                Start-Sleep -s 3           
+                                $null = New-AzRoleAssignment -Scope "/subscriptions/$($resourceSub.Id)" -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop             
+                                Write-Host ("`t`tAssigned Additional Role Permissions for Account: " + $roleName) -ForegroundColor Green       
+                            }
+                            catch {
+                                $attemptAgain = $true
+                            } 
+                        }
+
+                        if ($attemptAgain){
                             try {       
                                 Start-Sleep -s 15            
                                 $null = New-AzRoleAssignment -Scope $managementGroup.Id -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
                                 Write-Host ("`t`tAssigned Role Permissions for Account: $roleName'") -ForegroundColor Green
                             }
                             catch {
-                                Write-Warning ("Failed to assign Role Permissions for Account: '" + $roleName + "'. Manually correct via Azure Portal")
+                                Write-Warning ("Failed to assign Role Permissions for Account: '" + $roleName + "'.")
+                            }
+
+                            if ($boolFoundinHierarchy){
+                                try {            
+                                    Start-Sleep -s 3           
+                                    $null = New-AzRoleAssignment -Scope "/subscriptions/$($resourceSub.Id)" -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop             
+                                    Write-Host ("`t`tAssigned Additional Role Permissions for Account: " + $roleName) -ForegroundColor Green       
+                                }
+                                catch {
+                                    Write-Warning ("Failed to assign Additional Role Permissions for Account: '" + $roleName + "'.")
+                                } 
                             }
                         }
+
                     } else {
                         Write-Host "`t`t'$roleName' Role exists." -ForegroundColor Green
                     }
-
-                    # $remediation = ""
-
-                    # try {
-                    #     Write-Host "`tEvaluating if Remediation Task exists." -ForegroundColor Gray
-                    #     $remediation = Get-AzPolicyRemediation -Name ("Remediate-" + $displayName) -ManagementGroupName $managementGroup.Name -ErrorAction Stop
-                    # }
-                    # catch {
-                    #     Write-Host ("`t`tCreating Remediation Task: Remediate-" + $displayName) -ForegroundColor White
-                    # }
-
-                    # if($remediation){
-                    #     Write-Host ("`t`tRemediation Task exists.") -ForegroundColor Green
-                    # }
-                    # else {
-                    #     try {
-                    #         $remediation = Start-AzPolicyRemediation -Name ("Remediate-" + $displayName) -ManagementGroupName $managementGroup.Name -PolicyAssignmentId $assignment.PolicyAssignmentId
-                    #         Write-Host ("`t`tCreated Remediation Task: Remediate " + $displayName) -ForegroundColor Gree
-        
-                    #     }
-                    #     catch {
-                    #         Write-Warning ("Failed to create remediation task. Manually create task via Azure Portal")
-                    #     }
-                    # }
                 }
         } else {
             Write-Warning "Failed to collect policy from Github.com after two attempts. Validate access to internet and to github.com. Process will review where it left off and will resume when restarted. Exiting process."
@@ -438,10 +515,25 @@ function Deploy-SubscriptionPolicies {
                     'logAnalytics' = $logAnalyticWorkspaceResourceId
                     'profileName' = ("setbyPolicy_" + $userInputPrepend)
                 }
+
+                try {
+                    $resourceSub = Get-AzSubscription -SubscriptionId $logAnalyticWorkspaceObject.ResourceId.split("/")[2]
+                }
+                catch {
+
+                }
+
             } elseif ($diagnosticSettingsType -eq "storageAccount"){
                 $policyParameters = @{
                     'storageAccount' = $storageAccountResourceId
                     'profileName' = ("setbyPolicy_" + $userInputPrepend)
+                }
+
+                try {
+                    $resourceSub = Get-AzSubscription -SubscriptionId $storageAccountObject.ResourceId.split("/")[2]
+                }
+                catch {
+
                 }
             } # elseif ($diagnosticSettingsType -eq "eventHub"){
             #     $policyParameters = @{
@@ -521,21 +613,43 @@ function Deploy-SubscriptionPolicies {
 
                     try {            
                         Start-Sleep -s 3           
-                        $role = New-AzRoleAssignment -Scope "/subscriptions/$($subscriptionObject.Id)" -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop             
+                        $null = New-AzRoleAssignment -Scope "/subscriptions/$($subscriptionObject.Id)" -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop             
                         Write-Host ("`t`tAssigned Role Permissions for Account: 'Monitoring Contributor'") -ForegroundColor Green       
                     }
                     catch {
                         $attemptAgain = $true
                     }
 
+                    if ($resourceSub.Id -ne $subscriptionObject.Id){
+                        try {            
+                            Start-Sleep -s 3           
+                            $null = New-AzRoleAssignment -Scope "/subscriptions/$($resourceSub.Id)" -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop             
+                            Write-Host ("`t`tAssigned Additional Role Permissions for Account: 'Monitoring Contributor'") -ForegroundColor Green       
+                        }
+                        catch {
+                            $attemptAgain = $true
+                        } 
+                    }
+
                     if ($attemptAgain){
                         try {
                             Start-Sleep -s 15
-                            $role = New-AzRoleAssignment -Scope "/subscriptions/$($subscriptionObject.Id)" -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop
+                            $null = New-AzRoleAssignment -Scope "/subscriptions/$($subscriptionObject.Id)" -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop
                             Write-Host ("`t`tAssigned Role Permissions for Account: 'Monitoring Contributor'") -ForegroundColor Green
                         }
                         catch {
-                            Write-Warning ("Failed to assign Role Permissions for Account: 'Monitoring Contributor'. Manually correct via Azure Portal")
+                            Write-Warning ("Failed to assign Role Permissions for Account: 'Monitoring Contributor'.")
+                        }
+
+                        if ($resourceSub.Id -ne $subscriptionObject.Id){
+                            try {            
+                                Start-Sleep -s 15         
+                                $null = New-AzRoleAssignment -Scope "/subscriptions/$($resourceSub.Id)" -ObjectId $objectID -RoleDefinitionId $role1DefinitionId -ErrorAction Stop             
+                                Write-Host ("`t`tAssigned Additional Role Permissions for Account: 'Monitoring Contributor'") -ForegroundColor Green       
+                            }
+                            catch {
+                                Write-Warning ("Failed to assign Additional Role Permissions for Account: 'Monitoring Contributor'.")
+                            } 
                         }
                     }
 
@@ -565,10 +679,21 @@ function Deploy-SubscriptionPolicies {
                     try {       
                         Start-Sleep -s 1          
                         $null = New-AzRoleAssignment -Scope "/subscriptions/$($subscriptionObject.Id)" -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop
-                        Write-Host ("`t`tAssigned Role Permissions for Account: $roleName'") -ForegroundColor Green
+                        Write-Host ("`t`tAssigned Role Permissions for Account: " + $roleName) -ForegroundColor Green
                     }
                     catch {
                         $attemptAgain = $true
+                    }
+
+                    if ($resourceSub.Id -ne $subscriptionObject.Id){
+                        try {            
+                            Start-Sleep -s 3           
+                            $null = New-AzRoleAssignment -Scope "/subscriptions/$($resourceSub.Id)" -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop             
+                            Write-Host ("`t`tAssigned Additional Role Permissions for Account: " + $roleName) -ForegroundColor Green       
+                        }
+                        catch {
+                            $attemptAgain = $true
+                        } 
                     }
 
                     if ($attemptAgain){
@@ -578,37 +703,24 @@ function Deploy-SubscriptionPolicies {
                             Write-Host ("`t`tAssigned Role Permissions for Account: $roleName'") -ForegroundColor Green
                         }
                         catch {
-                            Write-Warning ("Failed to assign Role Permissions for Account: '" + $roleName + "'. Manually correct via Azure Portal")
+                            Write-Warning ("Failed to assign Role Permissions for Account: '" + $roleName + "'.")
+                        }
+
+                        if ($resourceSub.Id -ne $subscriptionObject.Id){
+                            try {            
+                                Start-Sleep -s 15       
+                                $null = New-AzRoleAssignment -Scope "/subscriptions/$($resourceSub.Id)" -ObjectId $objectID -RoleDefinitionId $role2DefinitionId -ErrorAction Stop             
+                                Write-Host ("`t`tAssigned Additional Role Permissions for Account: " + $roleName) -ForegroundColor Green       
+                            }
+                            catch {
+                                $attemptAgain = $true
+                            } 
                         }
                     }
 
                 } else {
                     Write-Host "`t`t'$roleName' Role exists." -ForegroundColor Green
                 }
-
-                # $remediation = ""
-                
-                # try {
-                #     Write-Host "`tEvaluating if Remediation Task exists." -ForegroundColor Gray
-                #     $remediation = Get-AzPolicyRemediation -Name ("Remediate-" + $displayName) -ErrorAction Stop
-                # }
-                # catch {
-                #     Write-Host ("`t`tCreating Remediation Task: Remediate-" + $displayName) -ForegroundColor White
-                # }
-
-                # if($remediation){
-                #     Write-Host ("`t`tRemediation Task exists.") -ForegroundColor Green
-                # }
-                # else {
-                #     try {
-                #         $remediation = Start-AzPolicyRemediation -PolicyAssignmentId $assignment.PolicyAssignmentId -Name ("Remediate-" + $displayName)
-                #         Write-Host ("`t`tCreated Remediation Task: Remediate " + $displayName) -ForegroundColor Gree
-    
-                #     }
-                #     catch {
-                #         Write-Warning ("Failed to create remediation task. Manually create task via Azure Portal")
-                #     }
-                # }
             }
             
         } else {
@@ -616,6 +728,46 @@ function Deploy-SubscriptionPolicies {
             Break Script
         }
     }
+}
+
+function Search-ManagementGroupMember {
+    param (
+        [Parameter(Mandatory=$true)]
+        $managementGroup,
+        [Parameter(Mandatory=$true)]
+        $resourceSubscription
+    )
+
+    #Write-Host Parent Group DisplayName: $managementGroup.DisplayName
+    #Write-Host Children Count: $managementGroup.children.count
+
+    if ($managementGroup.type -eq "/subscriptions"){
+        if ($managementGroup.name -eq $resourceSub.Id){
+            Write-Host "Resource is in the hierarchy of the selected maangement group."
+            return $true
+        }
+    }
+    else {
+        if ($managementGroup.children){
+            foreach ($group in $managementGroup.children) {
+                #Write-Host Child Group DisplayName: $group.DisplayName
+
+                if ($group.type -eq "/subscriptions"){
+                    if ($group.name -eq $resourceSub.Id){
+                        Write-Host "Resource is in the hierarchy of the selected maangement group."
+                        return $true
+                    }
+                }
+                else {
+                    if (Search-ManagementGroupMember $group $resourceSub){
+                        return $true
+                    }
+                }
+            }
+        }
+    }
+
+    return $false
 }
 
 ###------------Execution ---------------
@@ -1319,7 +1471,7 @@ Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "false"
 Write-Host "`nPolicy Deployment Complete." -ForegroundColor Green
 
 if ($boolRemediate){
-    Write-Host ("`nSubscription: " + $subscriptionObject) -ForegroundColor Cyan
+    Write-Host ("`nSubscription: " + $subscriptionId) -ForegroundColor Cyan
 
     try {
         #Write-Host "`tSelecting Subscription." -ForegroundColor White
@@ -1383,6 +1535,7 @@ if ($boolRemediate){
                 Write-Host ("`tCreating Remediation task: Remediate-" + $policy.PolicyDefinitionName + "-" + $date)  -ForegroundColor Gray
                 $remediation = Start-AzPolicyRemediation -Name ("Remediate-" + $policy.PolicyDefinitionName + "-" + $date) -PolicyAssignmentId $policy.PolicyAssignmentId -PolicyDefinitionReferenceId $policy.PolicyDefinitionId -ErrorAction Stop
                 Write-Host ("`t`tSuccessfully created Remedation Task")  -ForegroundColor Green
+                Write-Host $remediation
             }
             catch {
                 Write-Warning "Failed to create remediation task."
