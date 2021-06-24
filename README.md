@@ -32,16 +32,19 @@ The Enterprise Scale policies only deploy Log Analytic Workspace configuration f
 4. Requests Management Group(s) selection.
 5. Requests Subscriptions(s) selection.
 6. User selects which diagnostic settings type to deploy (LAW, SA, or both).
-7. Validates Microsot.PolicyInsights resource provider is registered.
+7. Requests if user wants to perform compliance and remediation.
+   1. If selected, compliance scan and remediation tasks will occur following deployment of all policies.
+8. Validates Microsot.PolicyInsights resource provider is registered.
    1. If not registered, registers Microsot.PolicyInsights.
-8. Validates Microsot.OperationalInsights resource provider is registered.
+9. Validates Microsot.OperationalInsights resource provider is registered.
    1. If not registered, registers Microsot.OperationalInsights.
-9. If selected, requests Log Analytic Workspace name for sending logs to the LAW.
-10. If selected, requests Storage Account name for archiving logs to the SA.
-11. Creates 59 Policy Definition per management group per diagnostic settings  type (LAW and/or SA).
-12. Assigns each Policy Definitions per management group and/or subscription.
-13. Applies Role Permissions for each Policy assignment.
-14. Creates Remediation Task for each Policy assignment.
+10. If selected, requests Log Analytic Workspace name for sending logs to the LAW.
+11. If selected, requests Storage Account name for archiving logs to the SA.
+12. Creates 59 Policy Definition per management group per diagnostic settings  type (LAW and/or SA).
+13. Assigns each Policy Definitions per management group and/or subscription.
+14. Applies Role Permissions for each Policy assignment.
+15. Perform Compliance scan.
+16. Creates Remediation Task for each non-compliant Policy.
 
 ## Future Updates
 1. Include new set of policies for sending logs and metrics to Event Hub.
