@@ -1,4 +1,3 @@
-
 Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
 $policyTotal = 59
 
@@ -743,7 +742,7 @@ function Search-ManagementGroupMember {
 
     if ($managementGroup.type -eq "/subscriptions"){
         if ($managementGroup.name -eq $resourceSub.Id){
-            Write-Host "Resource is in the hierarchy of the selected maangement group."
+            #Write-Host "Resource is in the hierarchy of the selected maangement group."
             return $true
         }
     }
@@ -754,7 +753,7 @@ function Search-ManagementGroupMember {
 
                 if ($group.type -eq "/subscriptions"){
                     if ($group.name -eq $resourceSub.Id){
-                        Write-Host "Resource is in the hierarchy of the selected maangement group."
+                        #Write-Host "Resource is in the hierarchy of the selected maangement group."
                         return $true
                     }
                 }
