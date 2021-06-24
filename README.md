@@ -24,6 +24,7 @@ The Enterprise Scale policies only deploy Log Analytic Workspace configuration f
    2. Where the log analytic workspace, storage account, or event hub is deployed.
 3. Log Analytic Workspace for that use case.
 4. Storage Account for that use case.
+5. Event Hub for that use case (coming soon).
 
 ## Process
 1. Validates Azure PowerShell module installation.
