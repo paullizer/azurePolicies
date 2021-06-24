@@ -2,6 +2,10 @@
 Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
 $policyTotal = 59
 
+$boolRemediate = $false
+$date = Get-Date -Format "MMddyyyy"
+
+
 ###------------Functions ---------------
 function Write-Color([String[]]$Text, [ConsoleColor[]]$Color = "White", [int]$StartTab = 0, [int] $LinesBefore = 0,[int] $LinesAfter = 0, [string] $LogFile = "", $TimeFormat = "yyyy-MM-dd HH:mm:ss") {
     # version 0.2
@@ -216,7 +220,7 @@ function Deploy-ManagementGroupPolicies {
                 }
                 else {
                     try {
-                        $assignment = New-AzPolicyAssignment -Name $nameGUID -DisplayName ($displayName + "-Assignment") -Location 'eastus' -Scope $managementGroup.Id -PolicyDefinition $definition -PolicyParameterObject $policyParameters -AssignIdentity
+                        $assignment = New-AzPolicyAssignment -Name $nameGUID -DisplayName ($displayName + "-Assignment") -Location 'eastus' -Scope $managementGroup.Id -PolicyDefinition $definition -PolicyParameterObject $policyParameters -AssignIdentity -ErrorAction Stop
                         Write-Host ("`t`tAssigned Azure Policy: " + $nameGUID + "/ " + ($displayName + "-Assignment") + " to management group: " + $managementGroup.Name) -ForegroundColor Green
     
                     }
@@ -295,29 +299,29 @@ function Deploy-ManagementGroupPolicies {
                         Write-Host "`t`t'$roleName' Role exists." -ForegroundColor Green
                     }
 
-                    $remediation = ""
+                    # $remediation = ""
 
-                    try {
-                        Write-Host "`tEvaluating if Remediation Task exists." -ForegroundColor Gray
-                        $remediation = Get-AzPolicyRemediation -Name ("Remediate-" + $displayName) -ManagementGroupName $managementGroup.Name -ErrorAction Stop
-                    }
-                    catch {
-                        Write-Host ("`t`tCreating Remediation Task: Remediate-" + $displayName) -ForegroundColor White
-                    }
+                    # try {
+                    #     Write-Host "`tEvaluating if Remediation Task exists." -ForegroundColor Gray
+                    #     $remediation = Get-AzPolicyRemediation -Name ("Remediate-" + $displayName) -ManagementGroupName $managementGroup.Name -ErrorAction Stop
+                    # }
+                    # catch {
+                    #     Write-Host ("`t`tCreating Remediation Task: Remediate-" + $displayName) -ForegroundColor White
+                    # }
 
-                    if($remediation){
-                        Write-Host ("`t`tRemediation Task exists.") -ForegroundColor Green
-                    }
-                    else {
-                        try {
-                            $remediation = Start-AzPolicyRemediation -Name ("Remediate-" + $displayName) -ManagementGroupName $managementGroup.Name -PolicyAssignmentId $assignment.PolicyAssignmentId
-                            Write-Host ("`t`tCreated Remediation Task: Remediate " + $displayName) -ForegroundColor Gree
+                    # if($remediation){
+                    #     Write-Host ("`t`tRemediation Task exists.") -ForegroundColor Green
+                    # }
+                    # else {
+                    #     try {
+                    #         $remediation = Start-AzPolicyRemediation -Name ("Remediate-" + $displayName) -ManagementGroupName $managementGroup.Name -PolicyAssignmentId $assignment.PolicyAssignmentId
+                    #         Write-Host ("`t`tCreated Remediation Task: Remediate " + $displayName) -ForegroundColor Gree
         
-                        }
-                        catch {
-                            Write-Warning ("Failed to create remediation task. Manually create task via Azure Portal")
-                        }
-                    }
+                    #     }
+                    #     catch {
+                    #         Write-Warning ("Failed to create remediation task. Manually create task via Azure Portal")
+                    #     }
+                    # }
                 }
         } else {
             Write-Warning "Failed to collect policy from Github.com after two attempts. Validate access to internet and to github.com. Process will review where it left off and will resume when restarted. Exiting process."
@@ -489,7 +493,7 @@ function Deploy-SubscriptionPolicies {
             }
             else {
                 try {
-                    $assignment = New-AzPolicyAssignment -Name $nameGUID -DisplayName ($displayName + "-Assignment") -Location 'eastus' -Scope "/subscriptions/$($subscriptionObject.Id)" -PolicyDefinition $definition -PolicyParameterObject $policyParameters -AssignIdentity
+                    $assignment = New-AzPolicyAssignment -Name $nameGUID -DisplayName ($displayName + "-Assignment") -Location 'eastus' -Scope "/subscriptions/$($subscriptionObject.Id)" -PolicyDefinition $definition -PolicyParameterObject $policyParameters -AssignIdentity -ErrorAction Stop
                     Write-Host ("`t`tAssigned Azure Policy: " + $nameGUID + "/ " + ($displayName + "-Assignment")) -ForegroundColor Green
 
                 }
@@ -582,29 +586,29 @@ function Deploy-SubscriptionPolicies {
                     Write-Host "`t`t'$roleName' Role exists." -ForegroundColor Green
                 }
 
-                $remediation = ""
+                # $remediation = ""
                 
-                try {
-                    Write-Host "`tEvaluating if Remediation Task exists." -ForegroundColor Gray
-                    $remediation = Get-AzPolicyRemediation -Name ("Remediate-" + $displayName) -ErrorAction Stop
-                }
-                catch {
-                    Write-Host ("`t`tCreating Remediation Task: Remediate-" + $displayName) -ForegroundColor White
-                }
+                # try {
+                #     Write-Host "`tEvaluating if Remediation Task exists." -ForegroundColor Gray
+                #     $remediation = Get-AzPolicyRemediation -Name ("Remediate-" + $displayName) -ErrorAction Stop
+                # }
+                # catch {
+                #     Write-Host ("`t`tCreating Remediation Task: Remediate-" + $displayName) -ForegroundColor White
+                # }
 
-                if($remediation){
-                    Write-Host ("`t`tRemediation Task exists.") -ForegroundColor Green
-                }
-                else {
-                    try {
-                        $remediation = Start-AzPolicyRemediation -PolicyAssignmentId $assignment.PolicyAssignmentId -Name ("Remediate-" + $displayName)
-                        Write-Host ("`t`tCreated Remediation Task: Remediate " + $displayName) -ForegroundColor Gree
+                # if($remediation){
+                #     Write-Host ("`t`tRemediation Task exists.") -ForegroundColor Green
+                # }
+                # else {
+                #     try {
+                #         $remediation = Start-AzPolicyRemediation -PolicyAssignmentId $assignment.PolicyAssignmentId -Name ("Remediate-" + $displayName)
+                #         Write-Host ("`t`tCreated Remediation Task: Remediate " + $displayName) -ForegroundColor Gree
     
-                    }
-                    catch {
-                        Write-Warning ("Failed to create remediation task. Manually create task via Azure Portal")
-                    }
-                }
+                #     }
+                #     catch {
+                #         Write-Warning ("Failed to create remediation task. Manually create task via Azure Portal")
+                #     }
+                # }
             }
             
         } else {
@@ -666,7 +670,7 @@ catch {
 
 if (!$azContext){
     try {
-        Connect-AzAccount
+        Connect-AzAccount -ErrorAction Stop
     }
     catch {
         Write-Warning "Failed to connect to Azure. Please verify access to internet or permissions to Azure. Existing process."
@@ -745,7 +749,7 @@ while (!$boolTenantFound) {
 
 if ($azContext.Tenant.Id -ne $tenant.Id){
     try {
-        Set-AzContext -TenantId $tenant.Id | Out-Null
+        Set-AzContext -TenantId $tenant.Id -ErrorAction Stop | Out-Null
     }
     catch {
         Write-Warning "Unable to set Azure Context. Please verify access to context. Existing process."
@@ -910,7 +914,7 @@ if ($boolDeploy2ManagementGroup){
 
     foreach ($managementGroupName in $userInputManagementGroupName){
         try{
-            $managementGroupObject = Get-AzManagementGroup $managementGroupName
+            $managementGroupObject = Get-AzManagementGroup $managementGroupName -ErrorAction Stop
         }
         catch {
             Write-Warning "Unable to collect Management Group information. Please verify access to internet and permissions to resource. Exiting process."
@@ -1031,8 +1035,53 @@ while ($boolCorrectUserInput) {
     }
 }
 
+do {
+    Write-Color "`n-------------------", " Compliance and Remediation Selection ", "-------------------" -Color Gray, White, Gray
+
+    if ($boolRemediate){
+        Write-Color "[", ([Char]8730).tostring(), "]", " Performing compliance scan and remediate non-compliant policies." -Color White, Green, White, White
+    } else {
+        Write-Color "1.  ", "Press ", "'1'", " or", " 'Y(y)'", " to perform compliance scan and remediation (may take 15+ minutes)." -Color Gray, White, Cyan, White, Cyan, White
+    }
+    
+    Write-Color "3.  ", "Press ", "'3'", " or", " 'D(d)'", " to Confirm Selection." -Color Gray, White, Cyan, White, Cyan, White -LinesBefore 1
+    
+    $userInput = Read-Host "`nPlease select a menu option:"
+
+    switch ($userInput.ToLower()) {
+        "y" {
+            if ($boolRemediate){
+                $boolRemediate = $false
+            } else {
+                $boolRemediate = $true
+            }
+        }
+        "1" {
+            if ($boolRemediate){
+                $boolRemediate = $false
+            } else {
+                $boolRemediate = $true
+            }
+        }
+        "3" {
+        }
+        "d" {
+        }
+        Default { 
+            Write-Warning "Incorrect selection." 
+        }
+    }
+}
+until (($userInput -eq '3') -or ($userInput.ToLower() -eq 'd'))
+
 if ($boolDeployLogAnalyticWorkspaceSettings ){
-    $subs = Get-AzSubscription -TenantId $tenant.Id
+    try {
+        $subs = Get-AzSubscription -TenantId $tenant.Id -ErrorAction Stop
+    }
+    catch {
+
+    }
+
     $boolLAWFound = $false
 
     while (!$boolLAWFound) {
@@ -1045,7 +1094,7 @@ if ($boolDeployLogAnalyticWorkspaceSettings ){
 
                 try {
                     #Write-Host "`tSelecting Subscription." -ForegroundColor White
-                    Select-AzSubscription -Subscription $subs[$x].Name | Out-Null
+                    Select-AzSubscription -Subscription $subs[$x].Name -ErrorAction Stop | Out-Null
                     #Write-Host "`t`tSubscription selected." -ForegroundColor Green
                 }
                 catch {
@@ -1102,7 +1151,7 @@ if ($boolDeployStorageAccountSettings){
 
                 try {
                     #Write-Host "`tSelecting Subscription." -ForegroundColor White
-                    Select-AzSubscription -Subscription $subs[$x].Name | Out-Null
+                    Select-AzSubscription -Subscription $subs[$x].Name -ErrorAction Stop | Out-Null
                     #Write-Host "`t`tSubscription selected." -ForegroundColor Green
                 }
                 catch {
@@ -1160,7 +1209,7 @@ if ($boolDeploy2Subscription){
                 if ($pi.RegistrationState -eq "NotRegistered"){
                     try {
                         Write-Host "`tMicrosot.PolicyInsights is NOT Registered. Attempting to Register." -ForegroundColor White
-                        Register-AzResourceProvider -ProviderNamespace "Microsoft.PolicyInsights" | Out-Null
+                        Register-AzResourceProvider -ProviderNamespace "Microsoft.PolicyInsights" -ErrorAction Stop | Out-Null
                         Write-Host "`t`tRegistered Microsot.PolicyInsights" -ForegroundColor Green
                         Break
                     }
@@ -1191,7 +1240,7 @@ if ($boolDeploy2Subscription){
                 if ($oi.RegistrationState -eq "NotRegistered"){
                     try {
                         Write-Host "`tMicrosot.OperationalInsights is NOT Registered. Attempting to Register." -ForegroundColor White
-                        Register-AzResourceProvider -ProviderNamespace "Microsoft.OperationalInsights" | Out-Null
+                        Register-AzResourceProvider -ProviderNamespace "Microsoft.OperationalInsights" -ErrorAction Stop | Out-Null
                         Write-Host "`t`tRegistered Microsot.OperationalInsights" -ForegroundColor Green
                         Break
                     }
@@ -1213,7 +1262,7 @@ if ($boolDeploy2Subscription){
 if ($boolDeployLogAnalyticWorkspaceSettings ){
     if ($boolDeploy2Subscription){
         foreach ($subscriptionObject in $subscriptionObjects){
-            Write-Host ("`nDeploying policies. " + $subscriptionObject.Name) -ForegroundColor Gray
+            Write-Host ("`nDeploying policies.") -ForegroundColor Gray
             Write-Host ("`tSubscription: " + $subscriptionObject.Name) -ForegroundColor Cyan
 
             try {
@@ -1240,12 +1289,12 @@ if ($boolDeployLogAnalyticWorkspaceSettings ){
 if ($boolDeployStorageAccountSettings){
     if ($boolDeploy2Subscription){
         foreach ($subscriptionObject in $subscriptionObjects){
-            Write-Host ("`nDeploying policies. " + $subscriptionObject.Name) -ForegroundColor Gray
+            Write-Host ("`nDeploying policies.") -ForegroundColor Gray
             Write-Host ("`tSubscription: " + $subscriptionObject.Name) -ForegroundColor Cyan
 
             try {
                 Write-Host "`t`tSelecting Subscription." -ForegroundColor White
-                Select-AzSubscription -Subscription $subscriptionObject.Name | Out-Null
+                Select-AzSubscription -Subscription $subscriptionObject.Name -ErrorAction Stop | Out-Null
                 Write-Host "`t`t`tSubscription selected." -ForegroundColor Green
             }
             catch {
@@ -1268,3 +1317,97 @@ if ($boolDeployStorageAccountSettings){
 Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "false"
 
 Write-Host "`nPolicy Deployment Complete." -ForegroundColor Green
+
+if ($boolRemediate){
+    Write-Host ("`nSubscription: " + $subscriptionObject) -ForegroundColor Cyan
+
+    try {
+        #Write-Host "`tSelecting Subscription." -ForegroundColor White
+        Select-AzSubscription -Subscription $subscriptionObject -ErrorAction Stop | Out-Null
+        #Write-Host "`t`tSubscription selected." -ForegroundColor Green
+    }
+    catch {
+        Write-Warning "Failed to select Subscription. Exiting process."
+        Break Script
+
+    }
+
+    try {
+        Write-Host "`nStarting Compliance Scan." -ForegroundColor Gray
+        Start-AzPolicyComplianceScan -ErrorAction Stop
+        Write-Host "`tCompliance Scan Started." -ForegroundColor White
+    }
+    catch {
+        Write-Warning "Failed to complete Compliance Scan. Initiate manual compliance scan, re-run this process, or run script Start-PolicyRemediation.ps1."
+    }
+
+    $timeDelay = 300
+    $consoleCharacterBarWidth = 60
+    $complete = ""
+    $remaining = ""
+
+    for($timeCount = 0; $timeCount -le $consoleCharacterBarWidth; $timeCount++) {
+        $complete = ""
+        $remaining = ""
+
+        for ($x = 0; $x -le $timeCount; $x++){
+            $complete += "O"
+        }
+
+        for ($y = $timeCount; $y -lt $consoleCharacterBarWidth; $y++){
+            $remaining += "-"
+        }
+
+        Write-Host ("`r`t[" + $complete + $remaining + "] " + ([Math]::Round(($timeCount / $consoleCharacterBarWidth), 2) * 100) + "%") -NoNewline -ForegroundColor Gray
+
+        Start-Sleep -Milliseconds ([Math]::Round(($timeDelay / $consoleCharacterBarWidth), 2) * 100)
+        Start-Sleep -s 1
+    }
+
+    Write-Host ("`r`t[" + $complete + $remaining + "] 100% - COMPLETE") -NoNewline -ForegroundColor White
+
+    try {
+        Write-Host "`n`nCollecting Non-compliant Policies" -ForegroundColor Gray
+        $policies = Get-AzPolicyState | Where-Object { $_.ComplianceState -eq "NonCompliant" -and $_.PolicyDefinitionAction -eq "deployIfNotExists" -and $_.PolicyDefinitionName.StartsWith($userInputPrepend)} -ErrorAction Stop
+    }
+    catch {
+        Write-Warning "Failed to collect policies. Initiate manual compliance scan, re-run this process, or run script Start-PolicyRemediation.ps1."
+        Break Script
+    }
+
+    if ($policies){
+        Write-Host ("`tFound " + $policies.count + " policies to remediate.")  -ForegroundColor White
+
+        foreach ($policy in $policies) {
+            try {
+                Write-Host ("`tCreating Remediation task: Remediate-" + $policy.PolicyDefinitionName + "-" + $date)  -ForegroundColor Gray
+                $remediation = Start-AzPolicyRemediation -Name ("Remediate-" + $policy.PolicyDefinitionName + "-" + $date) -PolicyAssignmentId $policy.PolicyAssignmentId -PolicyDefinitionReferenceId $policy.PolicyDefinitionId -ErrorAction Stop
+                Write-Host ("`t`tSuccessfully created Remedation Task")  -ForegroundColor Green
+            }
+            catch {
+                Write-Warning "Failed to create remediation task."
+                Write-Warning ($_.ErrorDetails)
+                Write-Warning "Initiate manual remedation task creation in the portal, re-run this process, or run script Start-PolicyRemediation.ps1."
+            }
+        }
+
+        if ($x -lt $subscriptionObjects.count-1){
+            Write-Host "`nMoving to next subscription." -ForegroundColor Gray
+        }
+        else {
+            Write-Host "`nCompliance and Remediation Complete." -ForegroundColor Green
+        }
+    }
+    else {
+        Write-Host "`tNo policies require remediation." -ForegroundColor White
+
+        if ($x -lt $subscriptionObjects.count-1){
+            Write-Host "`nMoving to next subscription." -ForegroundColor Gray
+        }
+        else {
+            Write-Host "`nCompliance and Remediation Complete." -ForegroundColor Green
+        }
+    }
+}
+
+Write-Host "`nDiagnostic Setting Policy Deployment Complete." -ForegroundColor Green
