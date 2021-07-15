@@ -1,3 +1,44 @@
+<#  
+.SYNOPSIS  
+    Deploy Azure Policies for Diagnostic Settings to subscription(s) or management group(s)    .
+.DESCRIPTION  
+    Deploy Azure Policies for Diagnostic Settings to subscription(s) or management group(s)    .
+
+        v1.0 - Update
+.NOTES  
+    File Name       :   Deploy-DiagnosticSettings.ps1  
+    Author          :   Paul Lizer, paullizer@microsoft.com
+    Prerequisite    :   PowerShell V5
+    Version         :   1.0 (2021 07 15)     
+.LINK  
+    https://github.com/paullizer/azurePolicies
+.EXAMPLE  
+    No parameters are required for use.
+
+        Deploy-DiagnosticSettings.ps1
+#>
+
+<#***************************************************
+                       Process
+-----------------------------------------------------
+    
+https://github.com/paullizer/azurePolicies#process
+
+***************************************************#>
+    
+
+<#***************************************************
+                       Terminology
+-----------------------------------------------------
+N\A
+***************************************************#>
+
+
+<#***************************************************
+                       Variables
+-----------------------------------------------------
+***************************************************#>
+
 Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
 $policyTotal = 59
 
@@ -5,15 +46,33 @@ $boolRemediate = $false
 $date = Get-Date -Format "MMddyyyy"
 
 
-###------------Functions ---------------
-function Write-Color([String[]]$Text, [ConsoleColor[]]$Color = "White", [int]$StartTab = 0, [int] $LinesBefore = 0,[int] $LinesAfter = 0, [string] $LogFile = "", $TimeFormat = "yyyy-MM-dd HH:mm:ss") {
-    # version 0.2
-    # - added logging to file
-    # version 0.1
-    # - first draft
-    # 
-    # Notes:
-    # - TimeFormat https://msdn.microsoft.com/en-us/library/8kb3ddd4.aspx
+<#***************************************************
+                       Functions
+-----------------------------------------------------
+***************************************************#>
+
+function Write-Color {
+    <#----------------------
+        version 0.2
+        - added logging to file
+        version 0.1
+        - first draft
+        
+        Notes:
+        - TimeFormat https://msdn.microsoft.com/en-us/library/8kb3ddd4.aspx
+    -----------------------#>
+
+    param (
+        [String[]]$Text,
+        [ConsoleColor[]]$Color = "White",
+        [int]$StartTab = 0,
+        [int] $LinesBefore = 0,
+        [int] $LinesAfter = 0,
+        [string] $LogFile = "",
+        $TimeFormat = "yyyy-MM-dd HH:mm:ss"
+    )
+
+    
 
     $DefaultColor = $Color[0]
 
@@ -60,6 +119,10 @@ function Write-Color([String[]]$Text, [ConsoleColor[]]$Color = "White", [int]$St
 }
 
 function Deploy-ManagementGroupPolicies {
+    <#----------------------
+        Deploy Azure Policies to a Managmement Group
+    -----------------------#>
+
     param (
         [Parameter(Mandatory=$true)]
         [string]$diagnosticSettingsType,
@@ -407,6 +470,10 @@ function Deploy-ManagementGroupPolicies {
 }
 
 function Deploy-SubscriptionPolicies {
+    <#----------------------
+        Deploy Azure Policies to a Subscriptiom
+    -----------------------#>
+
     param (
         [Parameter(Mandatory=$true)]
         [string]$diagnosticSettingsType,
@@ -730,6 +797,12 @@ function Deploy-SubscriptionPolicies {
 }
 
 function Search-ManagementGroupMember {
+    <#----------------------
+        Determine if a resource is a member of a management group. This is necessary for role permissions.
+        If the resource is not a member of the selected management group, then an additional role must be
+        assigned that gives the policy permission to affect the resource in its mangement group.
+    -----------------------#>
+
     param (
         [Parameter(Mandatory=$true)]
         $managementGroup,
@@ -769,7 +842,10 @@ function Search-ManagementGroupMember {
     return $false
 }
 
-###------------Execution ---------------
+<#***************************************************
+                       Execution
+-----------------------------------------------------
+***************************************************#>
 
 Clear-Host
 
