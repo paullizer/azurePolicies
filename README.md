@@ -3,13 +3,18 @@ Flexibility to deploy Azure Policies outside the Dev Ops process or the Enterpri
 
 The Enterprise Scale policies only deploy Log Analytic Workspace configuration for Diagnostic Settings. This set of Diagnostic Settings policies also configure Diagnostic Settings to archive logs and metrics to a Storage Account.
 
-## Goals
+#### Goals
 - Deploy all _Enterprise Scale Policies_ via PowerShell to:
    - Management group(s) 
    - Subscription(s)
 - Deploy _customized policies_ via PowerShell to:
    - Management group(s) 
    - Subscription(s)
+
+#### Future Updates
+1. Include new set of policies for sending logs and metrics to Event Hub.
+3. Create an Initiative and assign using Initiative.
+3. Expand beyond diagnostic settings.
 
 ## Policies Currently Supported
 1. Diagnostic Settings
@@ -24,6 +29,7 @@ The Enterprise Scale policies only deploy Log Analytic Workspace configuration f
    2. Where the log analytic workspace, storage account, or event hub is deployed.
 3. Log Analytic Workspace for that use case.
 4. Storage Account for that use case.
+5. Event Hub for that use case (coming soon).
 
 ## Process
 1. Validates Azure PowerShell module installation.
@@ -52,11 +58,6 @@ The Enterprise Scale policies only deploy Log Analytic Workspace configuration f
           1. If it is not, then the script will assign an additional role with permissions to the subscription where the LAW or SA resides
 15. [Optional] Perform Compliance scan.
 16. [Optional] Creates Remediation Task for each non-compliant Policy.
-
-## Future Updates
-1. Include new set of policies for sending logs and metrics to Event Hub.
-3. Create an Initiative and assign using Initiative.
-3. Expand beyond diagnostic settings.
 
 ## Execution
 ### Diagnostic Settings Policy Types
