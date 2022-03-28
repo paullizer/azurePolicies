@@ -44,7 +44,6 @@ $policyTotal = 59
 
 $boolRemediate = $false
 $date = Get-Date -Format "MMddyyyy"
-$key = "14a22511-b4a4-4fca-b942-61472abc3369"
 
 
 <#***************************************************
